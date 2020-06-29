@@ -20,7 +20,8 @@ import spotipy.util as util
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from pwmPCA9685 import pwm as pwm
-import lights
+from lightOneChannel import lightOneChannel
+from lightRGB import lightRGB
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
@@ -418,19 +419,35 @@ class EventEngine():
         alarmStop.set()
 
 nightlightChain = createLight({
-        'class': lights.lightOneChannel,
+        'class': lightOneChannel,
         'config': {
-            'output': 3
+            'output': 3,
+            'dimInput': 18
         },
         'topic': 'julian/nightlightChain'
     })
 
 deskLight = createLight({
-        'class': lights.lightOneChannel,
+        'class': lightOneChannel,
         'config': {
             'output': 2
         },
         'topic': 'julian/deskLight'
+    })
+
+bedLight = createLight({
+        'class': lightRGB,
+        'config': {
+            'output': {
+                'r': 4,
+                'g': 5,
+                'b': 6
+            },
+            'dimInput': 22,
+            'dimColor': [127,0,255],
+            'dimBrightness': 100
+        },
+        'topic': 'julian/bedLight'
     })
 
 tmqtt = mqttThread()
