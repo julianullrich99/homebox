@@ -1,0 +1,656 @@
+/*
+ statusbar-overlay sets the background color for the overlay. Black text is the default when the statusbar plugin is not added. When the
+ statusbar plugin is added, it also adds default setting to make the content white via:
+
+ <preference name="StatusBarStyle" value="lightcontent"/>
+
+ Setting the background color to black will allow the default light content (white text/icons) to show on it. The statusbar plugin is included
+ in the config.xml file and will be added by the CLI when you build locally.
+
+ See https://github.com/apache/cordova-plugin-statusbar
+ */
+
+@import url('https://fonts.googleapis.com/css?family=Roboto:300');
+/* cyrillic-ext */
+
+@import url('https://fonts.googleapis.com/css?family=Permanent+Marker');
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 300;
+    src: local('Roboto Light'), local('Roboto-Light'), url('Roboto_Light.woff2') format('woff2');
+    unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+*{
+    -ms-user-select: None;
+    -moz-user-select: None;
+    -webkit-user-select: None;
+    user-select: none;
+}
+
+
+
+
+/* declaration  beginning ----------------------------*/
+
+.statusbar-overlay {
+    background: #000000;
+}
+
+#bar_parent {
+    width: 90vw;
+}
+
+#instruction_so, #instruction_de{
+    background-color: #0051a9;color: aliceblue;font-size: large;
+}
+#bar {
+    width: 100%;
+    background-color: #19D4F4;
+    border-color: transparent;
+    height: 20px;
+}
+
+.ios .navbar, .subnavbar, .toolbar {
+    background: rgb(5, 179, 255) !important;
+}
+
+
+.navbar .center {
+    color: #5ac8fa;
+}
+
+
+.ios .page, .md .page{
+  background-color: #0050a9 !important;
+
+  background-image: url(../img/quizserbbackground.png) !important;
+  background-size: cover !important;
+  background-position-y: 30vh !important;
+  background-repeat: no-repeat;
+}
+
+.page-content {
+    /* padding: 0px !important; */
+}
+
+.center_index {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100wh;
+    flex-flow: row wrap;
+}
+
+.content-block {
+    margin: 0px !important;
+    width: 100vw;
+    height: 100wh;
+}
+
+.button {
+    background-color: #1762b3;
+    color: #46c5ff;
+    border-radius: 8px !important;
+    font-weight: 600;
+}
+#sendmessagebtn{
+    background-color: #ffffff;
+}
+
+.buttongrid .button{
+    background-color: transparent !important;
+    border-color: rgba(0, 0, 0, 0);
+    color: #1762b3 !important;
+    font-size: 150%;
+
+}
+
+
+.button-left {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+}
+
+.button-right {
+    border-top-right-radius: 8px;
+    border-top-left-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+}
+
+.flexcenter {
+    display: flex;
+    justify-content: center;
+    flex-flow: row wrap;
+    align-items: center;
+}
+
+.flexcenter p {
+    width: 100%;
+}
+
+.quizlogo_big {
+    height: 40vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    flex-flow: row wrap;
+}
+
+.squiz-icon {
+    width: 80%;
+    max-width: 50vh;
+    height: auto;
+    background: transparent;
+}
+
+.buttongrid {
+  /* background-color: rgba(255, 255, 255, 0.1); */
+/* width: calc(100% + 30px); */
+/* background-color: rgba(255, 255, 255, 0.1); */
+/* width: calc(100% + 30px); */
+height: 60vh;
+padding-top: 12vh;
+box-sizing: border-box;
+display: flex;
+/* margin: 0px -15px 0px -15px; */
+justify-content: center;
+flex-flow: row wrap;
+width: 100vw;
+position: absolute;
+bottom: 0px;
+background-image: url(../img/quizserblinde.png);
+background-size: contain;
+background-repeat: no-repeat;
+background-position: center;
+padding-bottom: 12vh;
+box-sizing: border-box;
+}
+
+#usermail, #textarea, #user_name{
+  -webkit-transform: translateZ(0px);
+  -webkit-user-select: ;
+}
+
+
+.menubutton {
+    width: 90vw;
+    /* background-color: rgba(255, 255, 255, 0.1); */
+    /* height: 50px; */
+    text-align: center;
+    margin: 10px auto;
+    box-sizing: border-box;
+}
+
+.buttongrid .menubutton {
+    font-weight: 600;
+    width: 70vw;
+    height: auto;
+    font-size: 140%;
+    margin: 0px;
+}
+.buttongrid .menubutton button{
+    font-weight: 600;
+    width: 70vw;
+    height: auto;
+    font-size: 100%;
+}
+
+.menubutton a {
+    width: 100%;
+    padding: 10px 20px;
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+    color: white;
+}
+
+.catbutton:not(#randombutton){
+    background-color: whitesmoke !important;
+    color: #005bbd;
+    /* border: 2px solid #ff2d55; */
+    box-shadow: 0px 0px 7px #282829;
+}
+/* .menubutton:nth-child(1){
+ background-color: rgba(255, 255, 255, 0.1);
+ }
+ .menubutton:nth-child(2){
+ background-color: rgba(255, 255, 255, 0.2);
+ }
+ .menubutton:nth-child(3){
+ background-color: rgba(255, 255, 255, 0.3);
+ }
+ .menubutton:nth-child(4){
+ background-color: rgba(255, 255, 255, 0.4);
+ } */
+
+/* ------------------- Fragen ---------------- */
+
+.question_panel {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-around;
+    width: 100vw;
+    height: calc(100vh - 88px);
+    /* margin: 0px -15px 0px -15px; */
+}
+
+.question_text {
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 1);
+    bo4rder-radius: 5px;
+    width: 90vw;
+    min-height: 33vh;
+    margin: 10px;
+    box-sizing: border-box;
+    line-height: 1.5em;
+    font-size: 1.3em;
+    color: navy;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 100;
+    border-radius: 8px !important;
+    text-align: center;
+    display: flex;
+    justify-content: space-around;
+    flex-flow: row wrap;
+    align-items: center;
+}
+
+.asw_text {
+    width: 90vw;
+    margin: 5px;
+    white-space: normal !important;
+    line-height: 24px !important;
+    height: 50px !important;
+}
+
+.rightasw {
+    background-color: #47c575 !important;
+}
+
+.falseasw {
+    background-color: #c54747 !important;
+}
+
+.showasw {
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-fill-mode: forwards;
+    /* animation-delay: 0.5s; */
+    background-color:  #47c575 !important;
+}
+
+@keyframes tada {
+    from {
+        -webkit-transform: scale3d(1, 1, 1);
+        transform: scale3d(1, 1, 1);
+    }
+    10%, 20% {
+        -webkit-transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg);
+        transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg);
+    }
+    30%, 50%, 70%, 90% {
+        -webkit-transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg);
+        transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg);
+    }
+    40%, 60%, 80% {
+        -webkit-transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg);
+        transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg);
+    }
+    to {
+        -webkit-transform: scale3d(1, 1, 1);
+        transform: scale3d(1, 1, 1);
+    }
+}
+
+@keyframes pulse {
+    from {
+        -webkit-transform: scale3d(1, 1, 1);
+        transform: scale3d(1, 1, 1);
+    }
+    50% {
+        -webkit-transform: scale3d(1.05, 1.05, 1.05);
+        transform: scale3d(1.05, 1.05, 1.05);
+    }
+    to {
+        -webkit-transform: scale3d(1, 1, 1);
+        transform: scale3d(1, 1, 1);
+    }
+}
+
+.swiper-pagination {
+    position: fixed;
+    font-size: 1em;
+    color: white;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 100;
+    margin-bottom: -10px;
+    height: 20px;
+
+    background-color: #2196f3;
+}
+.swiper-container {
+    min-height: calc(100vh + constant(safe-area-inset-bottom));
+    min-height: calc(100vh + env(safe-area-inset-bottom)) !important;
+}
+#time {
+    padding-right: 10px;
+}
+
+/* ------------------- Fragen ENDE ---------------- */
+
+/* ------------------- Kategorie---------------- */
+
+#categorieslist {
+    /* background-color: rgba(255, 255, 255, 0.1); */
+    /* width: calc(100% + 30px); */
+    padding: 10px 0px;
+    display: flex;
+    /* margin:  0px -15px 0px -15px; */
+    justify-content: center;
+    align-items: center;
+    flex-flow: row wrap;
+}
+
+/* ------------------- Kategorie ENDE ---------------- */
+
+/* ------------------- Highscore ENDE ---------------- */
+
+.snamesave {
+    margin: 15px 0px 5px auto;
+    width: min-content;
+}
+
+.hide {
+    display: none;
+}
+
+#tab-2 {
+    padding: 0px;
+}
+
+.virtualrow {
+    width: 100vw;
+}
+
+.item-inner {
+    color: white;
+    padding: 0px 2%;
+}
+
+.item-inner::after {
+    background-color: white !important;
+}
+
+.virtualrow .col-25:nth-child(1) {
+    color: white;
+    font-size: x-large;
+}
+
+.virtualrow .col-50:nth-child(2) {
+    color: white;
+}
+
+.virtualrow .col-25:nth-child(3) {
+    color: white;
+    font-size: x-large;
+    /* font-family: 'Permanent Marker', cursive; */
+}
+
+.item-subtitle {
+    font-size: 7px !important;
+    color: #ffffff80;
+}
+
+.subnavbar {}
+
+.emphasis {
+    background-color: rgba(0,0,0,.5) !important;
+}
+img#sortscore {
+    height: 28px;
+    width: 28px;
+    filter: invert(100);
+    margin: 6px;
+}
+.score-details {
+    height: 300px !important;
+}
+
+.hs-active {
+    border-top: 3px solid white;
+}
+
+/* ------------------- Highscore ENDE ---------------- */
+
+/* ------------------- Impressum Beginn ---------------- */
+
+#ifsadvertisment {
+    width: 100%;
+    height: auto;
+}
+
+.list.inset.color-theme-red {
+    background-color: ghostwhite;
+}
+
+.block-white {
+    color: ghostwhite !important;
+    background-color: rgb(40, 101, 179);
+}
+
+element.style {}
+
+.md .block {
+    /* margin: 32px 0; */
+    padding: 0 16px;
+}
+
+.md .block {
+    /* margin: 32px 0; */
+    padding: 0 16px;
+}
+
+.md .block {
+    margin: 0px !important;
+}
+
+
+.logobackground{
+    width: 100%;
+    padding: 10px;
+    /* background-color: white; */
+    flex-flow: row wrap;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+.logobackground img{
+    width: auto;
+    height: 50px;
+
+}
+/* ------------------- Impressum ENDE ---------------- */
+
+.tutorialicon {
+    font-size: 250px;
+    line-height: 170px;
+}
+
+.tutorial-close-btn {
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    color: #0da6ec;
+}
+
+.welcomescreen-container .welcomescreen-text a {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.tutorial-close-btn {
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    color: #0da6ec !important;
+    text-decoration: none !important;
+}
+
+.welcomescreen-pagination.swiper-pagination.swiper-pagination-bullets {
+    bottom: 40px !important;
+}
+
+/* Splash screen */
+
+.flex-container {
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.flex-item {
+    text-align: center;
+    margin: auto;
+    position: fixed;
+    top: 0px;
+    height: 50vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    flex-flow: row wrap;
+}
+
+.flex-item img {
+    width: 100%;
+    height: auto;
+}
+
+#backsplash {
+    position: fixed;
+    z-index: 9999;
+    height: 150vh;
+    display: block;
+    width: 100vw;
+    background-color: rgb(14, 80, 159);
+    animation-name: hide;
+
+    animation-duration: 1s;
+    animation-delay: 2s;
+    animation-fill-mode: forwards;
+}
+
+@keyframes hide {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+
+.md .segmented .button.button-outline, .ios .segmented .button.button-outline{
+    border: none;
+}
+
+#username {
+    color: whitesmoke;
+}
+#setusernamemodal{
+    top: 60px;
+    color: white;
+}
+#setusernamemodal h3{
+    font-size: 1.5em;
+}
+.popup.popup-username.modal-in{
+    padding-top: 40px 20px !important;
+    background-color: rgb(14, 80, 159);
+}
+.paddingt{
+    padding-top: 40px 0px !important;
+    margin-top: 20px;
+}
+
+
+.md .button, .ios .button{
+    text-overflow: unset !important;
+    text-transform:unset !important;
+
+}
+/*
+ .md .navbar, .ios .navbar{
+ background: #153cab;
+ }
+
+ .md .button.button-active, .md .button.button-fill, .md .button.button-fill-md, .md .button.tab-link-active, .ios .button.button-active, .ios .button.button-fill, .ios .button.button-fill-md, .ios .button.tab-link-active {
+
+ background-color: #153cab !important;
+ color: #fff;
+ } */
+
+
+
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding-bottom: constant(safe-area-inset-bottom)!important;
+    min-height: 100%;
+    background-color: #0051a9;
+    min-height: calc(100vh + constant(safe-area-inset-bottom));
+    min-height: calc(100vh + env(safe-area-inset-bottom)) !important;
+}
+#app{
+    padding-top: 0px !important;
+}
+
+.statusbar {
+    height: 0px !important;
+}
+
+.ios .button{
+    border: none !important;
+}
+
+.ios .list ul {
+    background: transparent;
+}
+
+.ios .sheet-modal {
+    background: #f2f9ff;
+}
+
+#tab-2{
+    background-color: rgb(40, 101, 179);
+}
+
+.ios .block-strong{
+    background-color: transparent !important;
+}
+
+.ios .block.instruction{
+    background-color: #0051a9;color: white;
+
+}
+
+.toolbar.toolbar-bottom-ios{
+
+  height: calc(44px + constant(safe-area-inset-bottom)) !important;
+  height: calc(44px + env(safe-area-inset-bottom)) !important;
+  margin-bottom: constant(safe-area-inset-bottom);
+  margin-bottom: env(safe-area-inset-bottom);
+
+}
