@@ -214,8 +214,10 @@ class neopixelThread(threading.Thread):
                 self.zoeMorphto(self.zoeColor,self.zoeOldColor)
                 self.zoeOldColor = self.zoeColor
 
-            if (self.zoeRainbowEn.isSet()):
+            elif (self.zoeRainbowEn.isSet()):
                 self.zoeRainbow()
+            else:
+                self.overrideDark()
 
             time.sleep(0.1)
 
@@ -243,6 +245,12 @@ class neopixelThread(threading.Thread):
             if not self.zoeRainbowEn.isSet():
                 self.zoeMorphto([0,0,0],[0,0,0],0,1)
                 break
+    
+    def overrideDark(self):
+        for i in range(self.zoePixels):
+            self.strip.setPixelColor(i, Color(0,0,0))
+        self.strip.show()
+    
 
     def zoeMorphto(self,color,start,speed=1,n=100):
         r1 = int(start[0])  # Anfangswerte
