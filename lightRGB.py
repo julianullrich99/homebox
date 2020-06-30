@@ -64,6 +64,7 @@ class lightRGB(threading.Thread):
                     # print value
                     self.out.set(value)
                     time.sleep(0.005)
+                self.dimBrightness = colorHelper.getMax(self.currVal)
                 self.currVal = value
                 self.on = False
                 self.rise = True
@@ -85,14 +86,14 @@ class lightRGB(threading.Thread):
             else:
                 value = colorHelper.dimColor(self.dimColor, self.dimCounter,255)
 
-            print("rise:",self.rise,"dimCounter:",self.dimCounter,"on:",self.on,"value:",value)
+            # print("rise:",self.rise,"dimCounter:",self.dimCounter,"on:",self.on,"value:",value)
 
             self.out.set(value)
 
             if self.dimCounter == 0 or self.dimCounter == 255:
                 break
 
-            time.sleep(0.01)
+            time.sleep(0.015)
 
         self.currVal = value
 
@@ -106,6 +107,7 @@ class lightRGB(threading.Thread):
     def morphto(self,value):  # value = [255,255,255]
         print "morphing to",value
         self.dimCounter = colorHelper.getMax(value)
+        self.dimColor = colorHelper.normalizeColor(value)
 
         if (value == [0,0,0]):
             if not self.on:

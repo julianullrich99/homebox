@@ -34,19 +34,21 @@ def getMax(value):
             m = v
     return m
 
-def dimColor(ratio,i,n):
+def normalizeColor(value,n = 255):
     normalized = [
-        float(ratio[0]) / n,
-        float(ratio[1]) / n,
-        float(ratio[2]) / n
+        float(value[0]) / n,
+        float(value[1]) / n,
+        float(value[2]) / n
     ]
     factor = n / getMax(normalized)
-    normalized = [
+    return [
         normalized[0] * factor,
         normalized[1] * factor,
         normalized[2] * factor
     ]
-    print("normalized:",normalized)
+
+def dimColor(ratio,i,n):
+    normalized = normalizeColor(ratio,n)
     return [
         normalized[0] * i / n,
         normalized[1] * i / n,
