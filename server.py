@@ -15,24 +15,24 @@ from pytz import timezone
 import datetime
 import math
 import telnetlib
-import spotipy
-import spotipy.util as util
-from spotipy.oauth2 import SpotifyClientCredentials
+from io import BytesIO
+from cgi import parse_header, parse_multipart
+from urllib.parse import parse_qs
+# import spotipy
+# import spotipy.util as util
+# from spotipy.oauth2 import SpotifyClientCredentials
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from pwmPCA9685 import pwm as pwm
 from lightOneChannel import lightOneChannel
 from lightRGB import lightRGB
+from toggleOneChannel import toggleOneChannel
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
 
-# scope = 'user-modify-playback-state,user-read-currently-playing'
-# SPOTIPY_CLIENT_ID="49e4b4ca65ea409bb48295c0a2f3f5e7"
-# SPOTIPY_CLIENT_SECRET="ee5dc6e0676d42099c6e65ae9d4b276e"
-# SPOTIPY_REDIRECT_URI="http://localhost/"
-
-def testCallback():
-    print "testCallback: ", time.time()
+hostName = ""
+serverPort = 8080
 
 def createLight(config):
     obj = config['class'](config['config'])
@@ -42,6 +42,7 @@ def createLight(config):
     return obj
 
 mqttTopics = []
+objects = {}
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -58,7 +59,7 @@ def on_message(client, userdata, msg):
             data = json.dumps({"type":"neopixel","action":"zoeStartRainbow"})
         else:
             data = json.dumps({"type":"neopixel","action":"zoeStopRainbow"})
-        print data
+        print(data)
         parse(data)
 
     for entry in mqttTopics:
@@ -73,106 +74,6 @@ def calc(x):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-
-class lightthread(threading.Thread):
-    def __init__(self, color, name='LightThread'):
-        """ constructor, setting initial variables """
-        self._stopevent = threading.Event()
-        self.color = color
-        self.currcolor = 'new'
-        self.rainbowSpeed = 0.1
-        self.changeEvent = threading.Event()
-        self.rainbowEn = threading.Event()
-        self.rainbowBrightness = 255
-        threading.Thread.__init__(self, name=name)
-        GPIO.setup(11, GPIO.OUT)
-        GPIO.setup(13, GPIO.OUT)
-        GPIO.setup(15, GPIO.OUT)
-        self.r1 = GPIO.PWM(15, 200)
-        self.g1 = GPIO.PWM(11, 200)
-        self.b1 = GPIO.PWM(13, 200)
-        self.r1.start(0)
-        self.g1.start(0)
-        self.b1.start(0)
-
-    def run(self):
-        """ main control loop """
-
-        print "%s starts" % (self.getName( ),)
-
-        old = [0,0,0]
-
-        while True:
-            if (self.changeEvent.isSet()):
-                self.changeEvent.clear()
-                # print self.changeEvent.isSet()
-                print 'change'
-                self.morphto(self.color,old)
-                old = self.color
-                print self.color
-            time.sleep(0.1)
-            if (self.rainbowEn.isSet()):
-                self.rainbow(self.rainbowSpeed, self.rainbowBrightness)
-
-    def startRainbow(self,data):
-        # self.changeEvent.set()
-        self.rainbowEn.clear()
-        self.rainbowBrightness = int(data['brightness'])
-        self.rainbowSpeed = float(data['speed'])
-        time.sleep(0.1)
-        self.rainbowEn.set()
-        return '{"status":"success"}'
-
-    def rainbow(self,speed, brightness):
-        i = 0
-        while self.rainbowEn.isSet():
-            color = self.wheel(i)
-            self.change(color, brightness)
-            i += [-255, 1][i < 255]
-            time.sleep(float(speed))
-            # print str(self.changeEvent.isSet()) + str(i)
-        # self.color = color
-
-    def wheel(self, pos):
-        """Generate rainbow colors across 0-255 positions."""
-        if pos < 85:
-            return [pos * 3, 255 - pos * 3, 0]
-        elif pos < 170:
-            pos -= 85
-            return [255 - pos * 3, 0, pos * 3]
-        else:
-            pos -= 170
-            return [0, pos * 3, 255 - pos * 3]
-
-    def setcolor(self, color):
-        self.color = color
-        self.rainbowEn.clear()
-        self.changeEvent.set()
-        return '{"status":"success"}'
-
-    def morphto(self,color,start):
-        r1 = int(start[0])  # Anfangswerte
-        g1 = int(start[1])
-        b1 = int(start[2])
-
-        dr1 = int(color[0]) - r1  # Differenz Ende - Anfang
-        dg1 = int(color[1]) - g1
-        db1 = int(color[2]) - b1
-
-        n = 100
-        speed = 1
-        for counter in range(0, n + 1):
-            r1_end = r1 + (counter * dr1 / 100)
-            g1_end = g1 + (counter * dg1 / 100)
-            b1_end = b1 + (counter * db1 / 100)
-            self.change([r1_end,g1_end,b1_end])
-            time.sleep(float(speed)/n)
-        self.changeEvent.clear()
-
-    def change(self,color, brightness = 255):
-        self.r1.ChangeDutyCycle(color[0] * 100 / 255 * brightness / 255)
-        self.g1.ChangeDutyCycle(color[1] * 100 / 255 * brightness / 255)
-        self.b1.ChangeDutyCycle(color[2] * 100 / 255 * brightness / 255)
 
 class neopixelThread(threading.Thread):
     def __init__(self, name='NeopixelThread'):
@@ -210,7 +111,7 @@ class neopixelThread(threading.Thread):
         while True:
             if (self.zoeChangeEvent.isSet()):
                 self.zoeChangeEvent.clear()
-                print 'changeZoeColor'
+                print('changeZoeColor')
                 self.zoeMorphto(self.zoeColor,self.zoeOldColor)
                 self.zoeOldColor = self.zoeColor
 
@@ -297,7 +198,7 @@ class mqttThread(threading.Thread):
         self.sunriseEn.set()
         n = 100
         timesleep = float(data['duration'] / n * 4)
-        print "duration: ",data['duration']
+        print("duration: ",data['duration'])
         for i in range(1,n+1):
             if not self.sunriseEn.isSet():
                 break
@@ -315,23 +216,12 @@ class mqttThread(threading.Thread):
                 timesleep = timesleep / 2.0
             if (i == 34):
                 timesleep = timesleep / 2.0
-            print "i",i
-            print "sleeping", timesleep
+            print("i",i)
+            print("sleeping", timesleep)
             time.sleep(timesleep)
 
     def stopSunrise(self):
         self.sunriseEn.clear()
-
-class spotifyThread(threading.Thread):
-    def __init__(self, name='SpotifyThread'):
-        threading.Thread.__init__(self, name=name)
-
-    def run(self):
-        global sp
-        while 1:
-            token = util.prompt_for_user_token('j.ullrich',scope,client_id=SPOTIPY_CLIENT_ID,client_secret=SPOTIPY_CLIENT_SECRET,redirect_uri=SPOTIPY_REDIRECT_URI)
-            sp = spotipy.client.Spotify(auth=token)
-            time.sleep(3500)
 
 class EventEngine():
     def __init__(self):
@@ -383,15 +273,14 @@ class EventEngine():
                 newJob['triggerargs'] = {}
                 newJob['triggerargs']['run_date'] = str(job.trigger.run_date)
             responseArr.append(newJob)
-        # print responseArr
         responseJson = json.dumps(responseArr)
         return responseJson
 
     def newJob(self,jsondata):
-        data = jsondata
+        data = json.loads(jsondata)
         triggerargs = data['triggerargs']
         # code.interact(local=locals())
-        self.scheduler.add_job(parse, data['trigger'], id=data['id'], replace_existing=True, name=data['name'], args=[data['args'][0]], **triggerargs)
+        self.scheduler.add_job(runScheduled, data['trigger'], id=data['id'], replace_existing=True, name=data['name'], args=[data['object'],data['args'][0]], **triggerargs)
 
         # if (data['trigger'] == 'cron'):
         #     self.scheduler.add_job(parse, data['trigger'], id=data['id'], replace_existing=True, name=data['name'], args=[json.dumps(data['args'][0])], jitter=triggerargs['jitter'], year=triggerargs['year'], month=triggerargs['month'], week=triggerargs['week'], day=triggerargs['day'], day_of_week=triggerargs['day_of_week'], hour=triggerargs['hour'], minute=triggerargs['minute'], second=triggerargs['second'], start_date=triggerargs['start_date'], end_date=triggerargs['end_date'])
@@ -404,7 +293,7 @@ class EventEngine():
         self.scheduler.remove_job(jobid)
 
     def toggleJob(self,jobId):
-        print "toggle"
+        print("toggle")
         if (self.scheduler.get_job(jobId).next_run_time == None):
             #unpause job
             self.scheduler.resume_job(jobId)
@@ -458,6 +347,15 @@ bedLight = createLight({
         'topic': 'julian/bedLight'
     })
 
+objects['waterpump'] = createLight({
+        'class': toggleOneChannel,
+        'config': {
+            'output': 7,
+            'timer': 5
+        },
+        'topic': 'julian/waterpump'
+    })
+
 tmqtt = mqttThread()
 tmqtt.setDaemon(True)
 tmqtt.start()
@@ -467,7 +365,7 @@ tneopixel.setDaemon(True)
 tneopixel.start()
 
 def parse(data,conn=None):
-    print "Parsing: ",data
+    print("Parsing: ",data)
     jsonobj = json.loads(data)
     response = ""
     if 'type' not in jsonobj and 'entities' in jsonobj:
@@ -476,91 +374,91 @@ def parse(data,conn=None):
             arr[index] = jsonobj['entities'][index][0]['value']
         parse(json.dumps(arr))
         return
-    if jsonobj['type'] == 'light':
-        if jsonobj['action'] == 'start':
-            response = tlight.setcolor(jsonobj['data'])
-            lightstate = 'on'
-            print 'start'
-        if jsonobj['action'] == 'rainbow':
-            response = tlight.startRainbow(jsonobj['data'])
-            lightstate = 'on'
-            print 'rainbow'
-        if jsonobj['action'] == 'white':
-            response = twhite.changeWhite(jsonobj['data'])
-            print 'white'
-        if jsonobj['action'] == 'kitchen':
-            response = twhite.changeWhite(jsonobj['value'])
-            print 'white'
-    if jsonobj['type'] == "mqtt":
-        if jsonobj['action'] == 'clockMode':
-            client.publish("julian/redding/clock/mode",jsonobj['data'],2,False)
-            response = '{"status":"success"}'
-            print 'clockMode'
-        if jsonobj['action'] == 'clockBright':
-            client.publish("julian/redding/clock/brightness",jsonobj['data'],2,False)
-            response = '{"status":"success"}'
-            print 'clockBright'
-        if jsonobj['action'] == 'roomLight':
-            client.publish("julian/redding/sonoff/cmnd/color",jsonobj['data'],1,False)
-            response = '{"status":"success"}'
-            print 'roomLight'
-        if jsonobj['action'] == "roomLightRGB":
-            client.publish("julian/redding/sonoff/cmnd/channel1",jsonobj['data'][0],1,False)
-            client.publish("julian/redding/sonoff/cmnd/channel2",jsonobj['data'][1],1,False)
-            client.publish("julian/redding/sonoff/cmnd/channel3",jsonobj['data'][2],1,False)
-            response = '{"status":"success"}'
-            print "roomlightRGB"
-        if jsonobj['action'] == "sunrise":
-            sunriseThread = threading.Thread(target=tmqtt.sunrise,kwargs={"data": jsonobj['data']})
-            sunriseThread.setDaemon(True)
-            response = '{"status":"success"}'
-            sunriseThread.start()
-        if jsonobj['action'] == "stopSunrise":
-            tmqtt.sunriseEn.clear()
-            response = '{"status":"success"}'
-            sunriseThread.start()
-        if jsonobj['action'] == "ampel":
-            print "ampel on"
-            client.publish("julian/redding/lichterkette1/farbe","[[0,255,0],[255,100,0],[255,0,0]]",1,False)
-            # client.publish("julian/redding/lichterkette2/farbe","[[0,255,0],[255,255,0],[255,0,0]]",1,False)
-            response = '{"status":"success"}'
-        if jsonobj['action'] == "ampeloff":
-            print "ampel off"
-            client.publish("julian/redding/lichterkette1/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-            # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-            response = '{"status":"success"}'
-        if jsonobj['action'] == "ampelcolor":  #takes color as 888 value
-            print "ampel color"
-            print jsonobj['data']
-            try:
-                jsonobj['data'] = int(jsonobj['data'],16)
-            except Exception as e:
-                print(traceback.format_exc())
-            str =  json.dumps([[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255]])
-            client.publish("julian/redding/lichterkette1/farbe",str,1,False)
-            print str
-            # client.publish("julian/redding/lichterkette2/farbe",json.dumps([(jsonobj['color'] >> 16) && 255,(jsonobj['color'] >> 8) && 255,jsonobj['color'] && 255]),1,False)
-            response = '{"status":"success"}'
-        if jsonobj['action'] == "roomMain":
-            print "roomMain"
-            client.publish("julian/redding/room/light1",jsonobj['data'],1,False)
-            # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-            response = '{"status":"success"}'
-        if jsonobj['action'] == "stringLight":
-            print "stringLight"
-            client.publish("julian/redding/room/light2",jsonobj['data'],1,False)
-            # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-            response = '{"status":"success"}'
+    # if jsonobj['type'] == 'light':
+        #     if jsonobj['action'] == 'start':
+        #         response = tlight.setcolor(jsonobj['data'])
+        #         lightstate = 'on'
+        #         print 'start'
+        #     if jsonobj['action'] == 'rainbow':
+        #         response = tlight.startRainbow(jsonobj['data'])
+        #         lightstate = 'on'
+        #         print 'rainbow'
+        #     if jsonobj['action'] == 'white':
+        #         response = twhite.changeWhite(jsonobj['data'])
+        #         print 'white'
+        #     if jsonobj['action'] == 'kitchen':
+        #         response = twhite.changeWhite(jsonobj['value'])
+        #         print 'white'
+    # if jsonobj['type'] == "mqtt":
+        # if jsonobj['action'] == 'clockMode':
+        #     client.publish("julian/redding/clock/mode",jsonobj['data'],2,False)
+        #     response = '{"status":"success"}'
+        #     print 'clockMode'
+        # if jsonobj['action'] == 'clockBright':
+        #     client.publish("julian/redding/clock/brightness",jsonobj['data'],2,False)
+        #     response = '{"status":"success"}'
+        #     print 'clockBright'
+        # if jsonobj['action'] == 'roomLight':
+        #     client.publish("julian/redding/sonoff/cmnd/color",jsonobj['data'],1,False)
+        #     response = '{"status":"success"}'
+        #     print 'roomLight'
+        # if jsonobj['action'] == "roomLightRGB":
+        #     client.publish("julian/redding/sonoff/cmnd/channel1",jsonobj['data'][0],1,False)
+        #     client.publish("julian/redding/sonoff/cmnd/channel2",jsonobj['data'][1],1,False)
+        #     client.publish("julian/redding/sonoff/cmnd/channel3",jsonobj['data'][2],1,False)
+        #     response = '{"status":"success"}'
+        #     print "roomlightRGB"
+        # if jsonobj['action'] == "sunrise":
+        #     sunriseThread = threading.Thread(target=tmqtt.sunrise,kwargs={"data": jsonobj['data']})
+        #     sunriseThread.setDaemon(True)
+        #     response = '{"status":"success"}'
+        #     sunriseThread.start()
+        # if jsonobj['action'] == "stopSunrise":
+        #     tmqtt.sunriseEn.clear()
+        #     response = '{"status":"success"}'
+        #     sunriseThread.start()
+        # if jsonobj['action'] == "ampel":
+        #     print "ampel on"
+        #     client.publish("julian/redding/lichterkette1/farbe","[[0,255,0],[255,100,0],[255,0,0]]",1,False)
+        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,255,0],[255,255,0],[255,0,0]]",1,False)
+        #     response = '{"status":"success"}'
+        # if jsonobj['action'] == "ampeloff":
+        #     print "ampel off"
+        #     client.publish("julian/redding/lichterkette1/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
+        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
+        #     response = '{"status":"success"}'
+        # if jsonobj['action'] == "ampelcolor":  #takes color as 888 value
+        #     print "ampel color"
+        #     print jsonobj['data']
+        #     try:
+        #         jsonobj['data'] = int(jsonobj['data'],16)
+        #     except Exception as e:
+        #         print(traceback.format_exc())
+        #     str =  json.dumps([[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255]])
+        #     client.publish("julian/redding/lichterkette1/farbe",str,1,False)
+        #     print str
+        #     # client.publish("julian/redding/lichterkette2/farbe",json.dumps([(jsonobj['color'] >> 16) && 255,(jsonobj['color'] >> 8) && 255,jsonobj['color'] && 255]),1,False)
+        #     response = '{"status":"success"}'
+        # if jsonobj['action'] == "roomMain":
+        #     print "roomMain"
+        #     client.publish("julian/redding/room/light1",jsonobj['data'],1,False)
+        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
+        #     response = '{"status":"success"}'
+        # if jsonobj['action'] == "stringLight":
+        #     print "stringLight"
+        #     client.publish("julian/redding/room/light2",jsonobj['data'],1,False)
+        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
+        #     response = '{"status":"success"}'
     if jsonobj['type'] == 'neopixel':
         if jsonobj['action'] == 'zoeStartRainbow':
             response = tneopixel.zoeStartRainbow()
-            print 'startRainbow'
+            print('startRainbow')
         if jsonobj['action'] == 'zoeStopRainbow':
             response = tneopixel.zoeStopRainbow()
-            print 'stopRainbow'
+            print('stopRainbow')
         if jsonobj['action'] == 'zoeBrightness':
             response = tneopixel.zoeBrightness(jsonobj["value"])
-            print 'zoeBrightness'
+            print('zoeBrightness')
     if jsonobj['type'] == "schedule":
         if jsonobj['action'] == "getJobs":
             response = events.getJobs()
@@ -579,70 +477,67 @@ def parse(data,conn=None):
         if jsonobj['action'] == "stopTimer":
             events.stopTimer(jsonobj['data'])
             response = '{"status":"success"}'
-    if jsonobj['type'] == "remote":
-        if jsonobj['action'] == "sendData":
-            print jsonobj['data']['payload']
-            tn = telnetlib.Telnet(jsonobj['data']['hostname'], jsonobj['data']['port'])
-            tn.write(jsonobj['data']['payload'].encode("utf-8"))
-            tn.close()
-            response = '{"status":"success"}'
-    # if jsonobj['type'] == "spotify":
-    #     if jsonobj['action'] == "pause":
-    #         sp.pause_playback()
-    #         response = '{"status":"success"}'
-    #     if jsonobj['action'] == "play":
-    #         sp.start_playback()
-    #         response = '{"status":"success"}'
-    #     if jsonobj['action'] == "next":
-    #         sp.next_track()
-    #         response = '{"status":"success"}'
-    #     if jsonobj['action'] == "previous":
-    #         sp.previous_track()
-    #         response = '{"status":"success"}'
-    #     if jsonobj['action'] == "playTrack":
-    #         prefix = "track"
-    #         if 'searchprefix' in jsonobj:
-    #             prefix = jsonobj['searchprefix']
-    #         results = sp.search(q=jsonobj['trackname'], type=prefix)
-    #         items = results[prefix + "s"]['items']
-    #         if len(items) > 0:
-    #             play = items[0]
-    #             print (play['name'])
-    #             uri = play["uri"]
-    #             if prefix == "track":
-    #                 sp.start_playback(uris=[uri])
-    #             else:
-    #                 sp.start_playback(context_uri=uri)
-    #         response = '{"status":"success"}'
-    #     if jsonobj['action'] == "quieter":
-    #         oldVol = sp.current_playback()['device']['volume_percent']
-    #         sp.volume(oldVol - 10 if oldVol >= 10 else 0)
-    #     if jsonobj['action'] == "louder":
-    #         oldVol = sp.current_playback()['device']['volume_percent']
-    #         sp.volume(oldVol + 10 if oldVol <= 90 else 100)
-    #     if jsonobj['action'] == "volume":
-    #         sp.volume(int(jsonobj['value']))
-    #     if jsonobj['action'] == "speakStart":
-    #         global oldVol
-    #         print "speakstart"
-    #         oldVol = sp.current_playback()['device']['volume_percent']
-    #         print int(oldVol * 0.3)
-    #         sp.volume(int(oldVol * 0.3))
-    #     if jsonobj['action'] == "speakEnd":
-    #         global oldVol
-    #         sp.volume(oldVol)
-    # print response
-    if conn is not None:
+        if conn is not None:
         conn.send(response)
     if 'respId' in jsonobj:
         # print jsonobj['respId']
         client.publish("julian/redding/response/"+jsonobj['respId'],response,1,False)
 
+def runScheduled(objectName, args):
+    objects[objectName].setScheduler(*json.loads(args))
+
+
+class MyServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if "getJobs" in self.path:
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(bytes(events.getJobs(),"utf-8"))
+        else:    
+            if self.path == "/":
+                self.path = "/index.php"
+            try:
+                with open(self.path[1:]) as file:
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(bytes(file.read(),"utf-8"))
+            except:
+                self.send_response(404)
+                self.end_headers()
+
+   
+    
+    def do_POST(self):
+        self.send_response(200)
+        self.end_headers()
+
+        if self.headers['Content-Type'] != "application/json":
+            self.wfile.write(b"only accepting JSON")
+            return
+
+        # postvars = self.parse_POST()
+        body = self.rfile.read(int(self.headers['Content-Length']))
+        data = json.loads(body.decode("utf-8"))
+
+        if "deleteJob" in self.path:
+            events.deleteJob(data['id'])
+            pass
+        elif "newJob" in self.path:
+            events.newJob(data['data'])
+        elif "toggleJob" in self.path:
+            events.toggleJob(data['id'])
+            
+
+
 def main():
+    webServer = HTTPServer((hostName, serverPort), MyServer)
 
-    while True:
-
-        time.sleep(0.1)
+    try:
+        webServer.serve_forever()
+    except KeyboardInterrupt:
+        pass
 
 events = EventEngine()
 

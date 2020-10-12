@@ -27,7 +27,7 @@ class lightOneChannel(threading.Thread):
 
     def dim(self,c):
         # global storeValue, strip, on, rise, channel, start, number, dimThreshold, startThreshold
-        print "dim"
+        print("dim")
         starttime = time.time()
         while GPIO.input(self.inputPin):
             time.sleep(0.02)
@@ -75,7 +75,7 @@ class lightOneChannel(threading.Thread):
         self.rise = not self.rise
 
     def morphto(self,value):
-        print "morphing to",value
+        print("morphing to",value)
         if (value == 0):
             if not self.on:
                 return

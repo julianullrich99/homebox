@@ -1,8 +1,3 @@
-<?php
-// phpinfo();
-
- ?>
-
 <html>
   <head>
     <script src=javascript.js></script>

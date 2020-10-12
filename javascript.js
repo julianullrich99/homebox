@@ -4,7 +4,7 @@ var xhrdata = null;
 
 window.onload = function() {
   var xhr = new XMLHttpRequest();
-  xhr.open("GET", "getJobs.php", true);
+  xhr.open("GET", "getJobs", true);
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4 && xhr.status == 200) {
       console.log(xhr.responseText);
@@ -37,14 +37,14 @@ class entitieList {
       var job = data[j];
       var tr = document.createElement("tr");
       var td = [];
-      for (var i = 0; i <= 7; i++) td.push(document.createElement("td")); //creating tds
+      for (var i = 0; i <= 8; i++) td.push(document.createElement("td")); //creating tds
       var editBtn = document.createElement("button"); //button for editing the job
       var self = this;
       const jobId = job.id; // save it for the onlick handle install, const in order to let it be constant and individual for every button
       editBtn.onclick = function() {
         self.edit(jobId);
       }
-      editBtn.innerHTML = "Job barbeiten";
+      editBtn.innerHTML = "Job bearbeiten";
       var deleteBtn = document.createElement("button"); //delete button
       var self = this;
       deleteBtn.onclick = function() {
@@ -62,7 +62,8 @@ class entitieList {
       td[0].innerHTML = job.id;
       td[1].innerHTML = job.name;
       td[2].innerHTML = job.args[0] === undefined ? "" : job.args[0];
-      td[3].innerHTML = job.trigger;
+      td[3].innerHTML = job.args[1] === undefined ? "" : job.args[1];
+      td[4].innerHTML = job.trigger;
       var triggerArgsStr = "";
       for (var argument in job.triggerargs) {
         if (job.triggerargs.hasOwnProperty(argument)) {
@@ -71,11 +72,11 @@ class entitieList {
           // console.log(triggerArgsStr);
         };
       };
-      td[4].innerHTML = triggerArgsStr.substring(0, triggerArgsStr.length - 2);
-      td[5].appendChild(editBtn);
-      td[6].appendChild(deleteBtn);
-      td[7].appendChild(pauseChk);
-      td[7].style.backgroundColor = (job.running) ? "green" : "red";
+      td[5].innerHTML = triggerArgsStr.substring(0, triggerArgsStr.length - 2);
+      td[6].appendChild(editBtn);
+      td[7].appendChild(deleteBtn);
+      td[8].appendChild(pauseChk);
+      td[8].style.backgroundColor = (job.running) ? "green" : "red";
       for (var i = 0; i < td.length; i++) tr.appendChild(td[i]);
       this.table.appendChild(tr);
     };
@@ -87,30 +88,32 @@ class entitieList {
     if (!confirm("Willst du das wirklich löschen?")) return;
     console.log("delete: " + jobId);
     var xhr = new XMLHttpRequest();
-    var fd = new FormData();
-    fd.append("id", jobId);
-    xhr.open("POST", "deleteJob.php", true);
+    const json = {id: jobId};
+    xhr.open("POST", "deleteJob", true);
     xhr.onreadystatechange = function() {
       if (xhr.status == 200 && xhr.readyState == 4) {
         console.log(xhr.responseText);
         window.onload();
       }
     };
-    xhr.send(fd);
+    xhr.setRequestHeader("Content-Type","application/json");
+    xhr.send(JSON.stringify(json));
   }
   toggle(jobId) {
     console.log("toggle: " + jobId);
     var xhr = new XMLHttpRequest();
-    var fd = new FormData();
-    fd.append("id", jobId);
-    xhr.open("POST", "toggleJob.php", true);
+    const json = {
+        id: jobId
+    };
+    xhr.open("POST", "toggleJob", true);
     xhr.onreadystatechange = function() {
       if (xhr.status == 200 && xhr.readyState == 4) {
         console.log(xhr.responseText);
         window.onload();
       }
     };
-    xhr.send(fd);
+    xhr.setRequestHeader("Content-Type","application/json");
+    xhr.send(JSON.stringify(json));
   }
   createModal(jobId = null) {
       console.log("jobid: " + String(jobId));
@@ -179,9 +182,9 @@ class entitieList {
     this.editDiv.setAttribute("id", "editDiv");
     document.body.appendChild(this.editDiv);
     var divs = [];
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 6; i++) {
       divs.push(document.createElement("div"));
-      var descriptions = ["id", "name", "args", "trigger", "triggerargs"];
+      var descriptions = ["id", "name", "objectName", "args", "trigger", "triggerargs"];
       var descriptionDiv = document.createElement("div");
       descriptionDiv.innerText = descriptions[i] + ": ";
       divs[i].appendChild(descriptionDiv);
@@ -194,11 +197,16 @@ class entitieList {
     name.setAttribute("id", "editName");
     name.setAttribute("value", job.name);
     divs[1].appendChild(name);
+    var objectname = document.createElement("input");
+    objectname.setAttribute("type", "text");
+    objectname.setAttribute("id", "editName");
+    objectname.setAttribute("value", job.args[0]);
+    divs[2].appendChild(objectname)
     var args = document.createElement("input");
     args.setAttribute("type", "text");
     args.setAttribute("id", "editArgs");
-    args.setAttribute("value", job.args[0] === undefined ? "" : job.args[0]);
-    divs[2].appendChild(args);
+    args.setAttribute("value", job.args[1] === undefined ? "" : job.args[1]);
+    divs[3].appendChild(args);
     var trigger = document.createElement("select");
     for (var i = 0; i < triggerSelect.length; i++) {
       var option = document.createElement("option");
@@ -208,8 +216,8 @@ class entitieList {
       trigger.appendChild(option);
     };
     var inputDiv = document.createElement('div');
-    divs[3].appendChild(trigger);
-    divs[4].appendChild(inputDiv);
+    divs[4].appendChild(trigger);
+    divs[5].appendChild(inputDiv);
     var selectorInput = trigger;
     var triggerargs;
     var triggerargdata; //prepare pointers for saving
@@ -240,6 +248,7 @@ class entitieList {
       elems = {
         id: job.id,
         name: name,
+        objectName: objectname,
         args: args,
         trigger: trigger,
         triggerargs: triggerargdata
@@ -296,15 +305,15 @@ class entitieList {
     var data = {
       id: elems.id,
       name: elems.name.value,
+      object: elems.objectName.value,
       args: [elems.args.value],
       trigger: elems.trigger.value,
       triggerargs: triggerargdata
     };
     console.log(data);
     var xhr = new XMLHttpRequest();
-    var fd = new FormData();
     xhr.open("POST", "newJob.php", true);
-    fd.append("data", JSON.stringify(data));
+    const json = {data: JSON.stringify(data)}
     xhr.onreadystatechange = function() {
       if (xhr.status == 200 && xhr.readyState == 4) {
         console.log(xhr.responseText);
@@ -312,6 +321,7 @@ class entitieList {
         self.editDiv.parentElement.removeChild(self.editDiv);
       }
     };
-    xhr.send(fd);
+    xhr.setRequestHeader("Content-Type","application/json");
+    xhr.send(JSON.stringify(json));
   }
 };
