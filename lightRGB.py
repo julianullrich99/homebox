@@ -110,8 +110,10 @@ class lightRGB(threading.Thread):
         self.dimColor = colorHelper.normalizeColor(value)
 
         if (value == [0,0,0]):
+            print("42")
             if not self.on:
-                return
+                if self.inputPin > -1: # wenn der dimInput nicht gesetzt ist soll der nicht returnen (sonst geht der nicht mehr weiter)
+                    return
             else:
                self.rise = True
                self.on = False

@@ -40,7 +40,11 @@ def normalizeColor(value,n = 255):
         float(value[1]) / n,
         float(value[2]) / n
     ]
-    factor = n / getMax(normalized)
+    maxValue = getMax(normalized)
+    if (maxValue == 0):
+        factor = 0
+    else:
+        factor = n / getMax(normalized)
     return [
         normalized[0] * factor,
         normalized[1] * factor,

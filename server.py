@@ -51,11 +51,13 @@ def on_connect(client, userdata, flags, rc):
     for entry in mqttTopics:
         client.subscribe(entry['topic'])
         print("subscribing to",entry['topic'])
+
+    client.publish("startdiscordbot","1")
  
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
     if (msg.topic == "julian/zoeRainbow"):
-        if (msg.payload == "1"):
+        if (msg.payload == b'1'):
             data = json.dumps({"type":"neopixel","action":"zoeStartRainbow"})
         else:
             data = json.dumps({"type":"neopixel","action":"zoeStopRainbow"})
@@ -347,6 +349,18 @@ bedLight = createLight({
         'topic': 'julian/bedLight'
     })
 
+ambilight = createLight({
+        'class': lightRGB,
+        'config': {
+            'output': {
+                'r': 8,
+                'g': 9,
+                'b': 10
+            },
+        },
+        'topic': 'julian/ambiLight'
+    })
+
 objects['waterpump'] = createLight({
         'class': toggleOneChannel,
         'config': {
@@ -374,81 +388,6 @@ def parse(data,conn=None):
             arr[index] = jsonobj['entities'][index][0]['value']
         parse(json.dumps(arr))
         return
-    # if jsonobj['type'] == 'light':
-        #     if jsonobj['action'] == 'start':
-        #         response = tlight.setcolor(jsonobj['data'])
-        #         lightstate = 'on'
-        #         print 'start'
-        #     if jsonobj['action'] == 'rainbow':
-        #         response = tlight.startRainbow(jsonobj['data'])
-        #         lightstate = 'on'
-        #         print 'rainbow'
-        #     if jsonobj['action'] == 'white':
-        #         response = twhite.changeWhite(jsonobj['data'])
-        #         print 'white'
-        #     if jsonobj['action'] == 'kitchen':
-        #         response = twhite.changeWhite(jsonobj['value'])
-        #         print 'white'
-    # if jsonobj['type'] == "mqtt":
-        # if jsonobj['action'] == 'clockMode':
-        #     client.publish("julian/redding/clock/mode",jsonobj['data'],2,False)
-        #     response = '{"status":"success"}'
-        #     print 'clockMode'
-        # if jsonobj['action'] == 'clockBright':
-        #     client.publish("julian/redding/clock/brightness",jsonobj['data'],2,False)
-        #     response = '{"status":"success"}'
-        #     print 'clockBright'
-        # if jsonobj['action'] == 'roomLight':
-        #     client.publish("julian/redding/sonoff/cmnd/color",jsonobj['data'],1,False)
-        #     response = '{"status":"success"}'
-        #     print 'roomLight'
-        # if jsonobj['action'] == "roomLightRGB":
-        #     client.publish("julian/redding/sonoff/cmnd/channel1",jsonobj['data'][0],1,False)
-        #     client.publish("julian/redding/sonoff/cmnd/channel2",jsonobj['data'][1],1,False)
-        #     client.publish("julian/redding/sonoff/cmnd/channel3",jsonobj['data'][2],1,False)
-        #     response = '{"status":"success"}'
-        #     print "roomlightRGB"
-        # if jsonobj['action'] == "sunrise":
-        #     sunriseThread = threading.Thread(target=tmqtt.sunrise,kwargs={"data": jsonobj['data']})
-        #     sunriseThread.setDaemon(True)
-        #     response = '{"status":"success"}'
-        #     sunriseThread.start()
-        # if jsonobj['action'] == "stopSunrise":
-        #     tmqtt.sunriseEn.clear()
-        #     response = '{"status":"success"}'
-        #     sunriseThread.start()
-        # if jsonobj['action'] == "ampel":
-        #     print "ampel on"
-        #     client.publish("julian/redding/lichterkette1/farbe","[[0,255,0],[255,100,0],[255,0,0]]",1,False)
-        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,255,0],[255,255,0],[255,0,0]]",1,False)
-        #     response = '{"status":"success"}'
-        # if jsonobj['action'] == "ampeloff":
-        #     print "ampel off"
-        #     client.publish("julian/redding/lichterkette1/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-        #     response = '{"status":"success"}'
-        # if jsonobj['action'] == "ampelcolor":  #takes color as 888 value
-        #     print "ampel color"
-        #     print jsonobj['data']
-        #     try:
-        #         jsonobj['data'] = int(jsonobj['data'],16)
-        #     except Exception as e:
-        #         print(traceback.format_exc())
-        #     str =  json.dumps([[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255],[(jsonobj['data'] >> 16) & 255,(jsonobj['data'] >> 8) & 255,jsonobj['data'] & 255]])
-        #     client.publish("julian/redding/lichterkette1/farbe",str,1,False)
-        #     print str
-        #     # client.publish("julian/redding/lichterkette2/farbe",json.dumps([(jsonobj['color'] >> 16) && 255,(jsonobj['color'] >> 8) && 255,jsonobj['color'] && 255]),1,False)
-        #     response = '{"status":"success"}'
-        # if jsonobj['action'] == "roomMain":
-        #     print "roomMain"
-        #     client.publish("julian/redding/room/light1",jsonobj['data'],1,False)
-        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-        #     response = '{"status":"success"}'
-        # if jsonobj['action'] == "stringLight":
-        #     print "stringLight"
-        #     client.publish("julian/redding/room/light2",jsonobj['data'],1,False)
-        #     # client.publish("julian/redding/lichterkette2/farbe","[[0,0,0],[0,0,0],[0,0,0]]",1,False)
-        #     response = '{"status":"success"}'
     if jsonobj['type'] == 'neopixel':
         if jsonobj['action'] == 'zoeStartRainbow':
             response = tneopixel.zoeStartRainbow()
@@ -478,7 +417,7 @@ def parse(data,conn=None):
             events.stopTimer(jsonobj['data'])
             response = '{"status":"success"}'
         if conn is not None:
-        conn.send(response)
+            conn.send(response)
     if 'respId' in jsonobj:
         # print jsonobj['respId']
         client.publish("julian/redding/response/"+jsonobj['respId'],response,1,False)
