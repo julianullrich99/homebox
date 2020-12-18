@@ -9,6 +9,14 @@ def convertColor(value, colorformat):
         
     return value
 
+def convertColorTo(value, colorformat):
+    #invalue = array(r,g,b)
+    if (colorformat == '888'):
+        retVal = (value[0] << 16) & 255 | (value[1] << 8) & 255 | (value[2]) & 255
+
+    return str(retVal)
+
+
 def dimCalculator(start, end, i, n):
     d = [
         end[0] - start[0],

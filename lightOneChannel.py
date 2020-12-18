@@ -135,3 +135,12 @@ class lightOneChannel(threading.Thread):
 
     def setMQTT(self,value):
         self.morphto(int(value))
+
+
+    def setJarvis(self,value):
+        value = value.decode("utf-8")
+        print("setJarvis: ",value)
+        if (value == "on"):
+            self.morphto(100)
+        elif (value == "off"):
+            self.morphto(0)

@@ -9,7 +9,6 @@ import signal
 import traceback
 import paho.mqtt.client as mqtt
 from apscheduler.schedulers.background import BackgroundScheduler
-from rpi_ws281x import PixelStrip, Color
 import code
 from pytz import timezone
 import datetime
@@ -17,16 +16,20 @@ import math
 import telnetlib
 from io import BytesIO
 from cgi import parse_header, parse_multipart
+
 from urllib.parse import parse_qs
-# import spotipy
-# import spotipy.util as util
-# from spotipy.oauth2 import SpotifyClientCredentials
+
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from neopixel import neopixelThread as zoe
 from pwmPCA9685 import pwm as pwm
 from lightOneChannel import lightOneChannel
 from lightRGB import lightRGB
 from toggleOneChannel import toggleOneChannel
+from heaterControl import heaterControl
+import msc
+
+import colorHelper
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
@@ -38,7 +41,9 @@ def createLight(config):
     obj = config['class'](config['config'])
     obj.setDaemon(True)
     obj.start()
-    mqttTopics.append({'topic':config['topic'],'callback':obj.setMQTT})
+    if 'topics' in config:
+        for topic in config['topics']:
+            mqttTopics.append({'topic':topic['topic'],'callback':obj.__getattribute__(topic['callback'])})
     return obj
 
 mqttTopics = []
@@ -46,7 +51,6 @@ objects = {}
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
-    client.subscribe("julian/zoeRainbow")
 
     for entry in mqttTopics:
         client.subscribe(entry['topic'])
@@ -56,13 +60,6 @@ def on_connect(client, userdata, flags, rc):
  
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
-    if (msg.topic == "julian/zoeRainbow"):
-        if (msg.payload == b'1'):
-            data = json.dumps({"type":"neopixel","action":"zoeStartRainbow"})
-        else:
-            data = json.dumps({"type":"neopixel","action":"zoeStopRainbow"})
-        print(data)
-        parse(data)
 
     for entry in mqttTopics:
         if (msg.topic == entry['topic']):
@@ -76,116 +73,6 @@ def calc(x):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-
-class neopixelThread(threading.Thread):
-    def __init__(self, name='NeopixelThread'):
-        """ constructor, setting initial variables """
-        threading.Thread.__init__(self, name=name)
-
-
-        self._stopevent = threading.Event()
-
-        self.zoeOldColor = [0,0,0]
-        self.zoeColor = [0,0,0]
-
-        self.zoeChangeEvent = threading.Event()
-        self.zoeRainbowEn = threading.Event()
-        self.zoePixels = 30
-        self.zoeBrightness = 255
-
-        # LED strip configuration:
-        LED_COUNT      = 30      # Number of LED pixels.
-        # LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
-        LED_PIN        = 10      # GPIO pin connected to the pixels (10 uses SPI /dev/spidev0.0).
-        LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
-        LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
-        LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
-        LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
-        LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
-
-        self.strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
-            # Intialize the library (must be called once before other functions).
-        self.strip.begin()
-
-    def run(self):
-        """ main control loop """
-
-        while True:
-            if (self.zoeChangeEvent.isSet()):
-                self.zoeChangeEvent.clear()
-                print('changeZoeColor')
-                self.zoeMorphto(self.zoeColor,self.zoeOldColor)
-                self.zoeOldColor = self.zoeColor
-
-            elif (self.zoeRainbowEn.isSet()):
-                self.zoeRainbow()
-            else:
-                self.overrideDark()
-
-            time.sleep(0.1)
-
-    def zoeStartRainbow(self):
-        self.zoeRainbowEn.set()
-
-    def zoeStopRainbow(self):
-        self.zoeRainbowEn.clear()
-
-    def zoeBrightness(self,value):
-        self.zoeBrightness = value
-
-    def zoeSetColor(self,color):
-        self.zoeColor = color
-        self.zoeRainbowEn.clear()
-        self.zoeChangeEvent.set()
-
-    def zoeRainbow(self, wait_ms=20, iterations=1):
-        """Draw rainbow that uniformly distributes itself across all pixels."""
-        for j in range(256*iterations):
-            for i in range(self.zoePixels):
-                self.strip.setPixelColor(i, self.wheel((int(i * 256 / self.zoePixels) + j) & 255))
-            self.strip.show()
-            time.sleep(wait_ms/1000.0)
-            if not self.zoeRainbowEn.isSet():
-                self.zoeMorphto([0,0,0],[0,0,0],0,1)
-                break
-    
-    def overrideDark(self):
-        for i in range(self.zoePixels):
-            self.strip.setPixelColor(i, Color(0,0,0))
-        self.strip.show()
-    
-
-    def zoeMorphto(self,color,start,speed=1,n=100):
-        r1 = int(start[0])  # Anfangswerte
-        g1 = int(start[1])
-        b1 = int(start[2])
-
-        dr1 = int(color[0]) - r1  # Differenz Ende - Anfang
-        dg1 = int(color[1]) - g1
-        db1 = int(color[2]) - b1
-
-        n = 100
-        speed = 1 # 1 sec
-        for counter in range(0, n + 1):
-            r1_end = r1 + (counter * dr1 / 100)
-            g1_end = g1 + (counter * dg1 / 100)
-            b1_end = b1 + (counter * db1 / 100)
-            for i in range(self.zoePixels):
-                self.strip.setPixelColor(i, Color(int(r1_end),int(g1_end),int(b1_end)))
-            self.strip.show()
-            time.sleep(float(speed)/n)
-        self.zoeChangeEvent.clear()
-
-    def wheel(self,pos):
-        """Generate rainbow colors across 0-255 positions."""
-        if pos < 85:
-            return Color(int(pos * 3 * float(self.zoeBrightness/255)), int((255 - pos * 3) * float(self.zoeBrightness/255)), 0)
-        elif pos < 170:
-            pos -= 85
-            return Color(int((255 - pos * 3) * float(self.zoeBrightness/255)), 0, int(pos * 3 * float(self.zoeBrightness/255)))
-        else:
-            pos -= 170
-            return Color(0, int(pos * 3 * float(self.zoeBrightness/255)), int((255 - pos * 3) * float(self.zoeBrightness/255)))
 
 class mqttThread(threading.Thread):
     def __init__(self, name='MQTTThread'):
@@ -323,7 +210,16 @@ nightlightChain = createLight({
             'output': 3,
             'dimInput': 18
         },
-        'topic': 'julian/nightlightChain'
+        'topics': [
+            {
+                'topic':'julian/nightlightChain',
+                'callback':'setMQTT'
+            },
+            {
+                'topic':'julian/light/turn',
+                'callback':'setJarvis'
+            }
+        ]
     })
 
 deskLight = createLight({
@@ -331,7 +227,12 @@ deskLight = createLight({
         'config': {
             'output': 2
         },
-        'topic': 'julian/deskLight'
+        'topics': [
+            {
+                'topic':'julian/deskLight',
+                'callback':'setMQTT'
+            }
+        ]
     })
 
 bedLight = createLight({
@@ -346,7 +247,12 @@ bedLight = createLight({
             'dimColor': [127,0,255],
             'dimBrightness': 100
         },
-        'topic': 'julian/bedLight'
+        'topics': [
+            {
+                'topic':'julian/bedLight',
+                'callback':'setMQTT'
+            }
+        ]
     })
 
 ambilight = createLight({
@@ -358,7 +264,46 @@ ambilight = createLight({
                 'b': 10
             },
         },
-        'topic': 'julian/ambiLight'
+        'topics': [
+            {
+                'topic':'julian/ambiLight',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+whiteboardLight = createLight({
+        'class': lightRGB,
+        'config': {
+            'output': {
+                'r': 13,
+                'g': 11,
+                'b': 12
+            },
+        },
+        'topics': [
+            {
+                'topic':'julian/whiteboardLight',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+underbedLight = createLight({
+        'class': lightRGB,
+        'config': {
+            'output': {
+                'r': 14,
+                'g': 15,
+                'b': 16
+            },
+        },
+        'topics': [
+            {
+                'topic':'julian/underbedlight',
+                'callback':'setMQTT'
+            }
+        ]
     })
 
 objects['waterpump'] = createLight({
@@ -367,16 +312,98 @@ objects['waterpump'] = createLight({
             'output': 7,
             'timer': 5
         },
-        'topic': 'julian/waterpump'
+        'topics': [
+            {
+                'topic':'julian/waterpump',
+                'callback':'setMQTT'
+            }
+        ]
     })
+
+neopixel = createLight({
+        'class': zoe,
+        'config': { },
+        'topic': 'julian/zoeRainbow',
+        'topics': [
+            {
+                'topic':'julian/zoeRainbow',
+                'callback':'setMQTT'
+            },
+            {
+                'topic':'julian/zoeColor',
+                'callback':'setColorMQTT'
+            }
+        ]
+    })
+
+objects['fullLightMultiplier'] = createLight({
+    'class':msc.taskMultiplier,
+    'config': {
+        'outputs': [
+            {
+                'setFunction': ambilight.setMQTT,
+                'conversion': None
+            },
+            {
+                'setFunction': bedLight.setMQTT,
+                'conversion': None
+            },
+            {
+                'setFunction': neopixel.setColorMQTT,
+                'conversion': None
+            },
+            {
+                'setFunction': underbedLight.setMQTT,
+                'conversion': None
+            },
+            {
+                'setFunction': whiteboardLight.setMQTT,
+                'conversion': None
+            },
+        ]
+    },
+    'topics': [
+        {
+            'topic':'julian/fullLight',
+            'callback':'setMQTT'
+        }
+    ]
+    })
+
+objects['heater'] = createLight({
+        'class': heaterControl,
+        'config': {
+            'mqttClient': client,
+            'switchTopic': 'sonoff/heizung/cmnd/tasmota_switch/Power',
+            'sensorPin': 5,
+            'metricTopic': 'julian/currTemp',
+        },
+        'topics': [
+            {
+                'topic': 'julian/heizung',
+                'callback': 'setMQTT'
+            }
+        ]
+    })
+
+#objects['fullLightSunrise'] = createLight({
+        #'class':msc.sunrise,
+        #'config': {
+            #'callback': objects['fullLightMultiplier'].setMQTT,
+            #'outputColorFormat': '888',
+            #'time': 1800,
+            #'color': [255,255,255]
+        #}
+
+    #})
 
 tmqtt = mqttThread()
 tmqtt.setDaemon(True)
 tmqtt.start()
 
-tneopixel = neopixelThread()
-tneopixel.setDaemon(True)
-tneopixel.start()
+# tneopixel = neopixelThread()
+# tneopixel.setDaemon(True)
+# tneopixel.start()
 
 def parse(data,conn=None):
     print("Parsing: ",data)

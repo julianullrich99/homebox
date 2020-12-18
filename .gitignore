@@ -3,3 +3,4 @@ deprecated
 libaries
 spotify
 *.pyc
+.env
