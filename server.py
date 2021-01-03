@@ -27,7 +27,11 @@ from lightOneChannel import lightOneChannel
 from lightRGB import lightRGB
 from toggleOneChannel import toggleOneChannel
 from heaterControl import heaterControl
+from jarvisParser import jarvisParser
+from relayOneChannelMQTT import switchMQTT
 import msc
+
+jarvisParser = jarvisParser()
 
 import colorHelper
 
@@ -56,10 +60,17 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe(entry['topic'])
         print("subscribing to",entry['topic'])
 
-    client.publish("startdiscordbot","1")
+    client.subscribe("jarvis/#")
+
  
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
+
+    if (msg.topic.startswith("jarvis/")):
+        t, v = jarvisParser.parse(msg.payload,msg.topic)
+
+        print(t,v)
+        client.publish("julian/"+t,v)
 
     for entry in mqttTopics:
         if (msg.topic == entry['topic']):
@@ -214,10 +225,6 @@ nightlightChain = createLight({
             {
                 'topic':'julian/nightlightChain',
                 'callback':'setMQTT'
-            },
-            {
-                'topic':'julian/light/turn',
-                'callback':'setJarvis'
             }
         ]
     })
@@ -320,6 +327,24 @@ objects['waterpump'] = createLight({
         ]
     })
 
+mainLight = createLight({
+        'class': switchMQTT,
+        'config': {
+            'mqttClient': client,
+            'switchTopic': 'sonoff/mainLight/cmnd/tasmota_switch/Power'
+        },
+        'topics': [
+            {
+                'topic': 'julian/mainLight',
+                'callback': 'setMQTT'
+            },
+            {
+                'topic': 'julian/lichtschalter1',
+                'callback': 'switch'
+            }
+        ]
+    })
+
 neopixel = createLight({
         'class': zoe,
         'config': { },
@@ -332,6 +357,14 @@ neopixel = createLight({
             {
                 'topic':'julian/zoeColor',
                 'callback':'setColorMQTT'
+            },
+            {
+                'topic':'julian/zoeListening',
+                'callback':'zoeSetListening'
+            },
+            {
+                'topic':'jarvis/recording',
+                'callback':'zoeSetListening'
             }
         ]
     })

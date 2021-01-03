@@ -4,3 +4,4 @@ libaries
 spotify
 *.pyc
 .env
+tempData.csv

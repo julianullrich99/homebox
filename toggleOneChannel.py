@@ -9,6 +9,7 @@ class toggleOneChannel(threading.Thread):
 
         self.out = pwm(config['output'],255)
 
+        self.tempTimer = -1
         self.timer = -1
         if 'timer' in config:
             self.timer = config['timer']
@@ -25,13 +26,19 @@ class toggleOneChannel(threading.Thread):
         else:
             self.on = False
             self.out.set(0)
+            if (self.tempTimer != -1):
+                self.timer = self.tempTimer
+                self.tempTimer = -1
         return
 
-    def setMQTT(self,value):
+    def setMQTT(self,value,timer=-1):
         self.set(int(value))
 
-    def setScheduler(self,value):
-        self.set(int(value))
+    def setScheduler(self,timer):
+        if (timer != -1):
+            self.tempTimer = self.timer
+            self.timer = timer
+        self.set(1)
 
     def startTimer(self):
         start = time.time()
