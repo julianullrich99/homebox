@@ -136,6 +136,12 @@ class lightOneChannel(threading.Thread):
     def setMQTT(self,value):
         self.morphto(int(value))
 
+    def setToggle(self,value):
+        if self.on:
+            self.morphto(0)
+        else:
+            self.morphto(255)
+
 
     def setJarvis(self,value):
         value = value.decode("utf-8")
