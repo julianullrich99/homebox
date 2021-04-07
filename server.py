@@ -29,6 +29,7 @@ from toggleOneChannel import toggleOneChannel
 from heaterControl import heaterControl
 from jarvisParser import jarvisParser
 from relayOneChannelMQTT import switchMQTT
+from externalMQTT import externalMQTT
 import msc
 
 jarvisParser = jarvisParser()
@@ -225,7 +226,11 @@ nightlightChain = createLight({
             {
                 'topic':'julian/nightlightChain',
                 'callback':'setMQTT'
-            }
+            },
+#            {
+#                'topic':'julian/lichtschalter1',
+#                'callback':'setToggle'
+#            }
         ]
     })
 
@@ -323,7 +328,11 @@ objects['waterpump'] = createLight({
             {
                 'topic':'julian/waterpump',
                 'callback':'setMQTT'
-            }
+            },
+#            {
+#                'topic':'julian/lichtschalter1',
+#                'callback':'setMQTT'
+#            }
         ]
     })
 
@@ -336,7 +345,7 @@ mainLight = createLight({
         'topics': [
             {
                 'topic': 'julian/mainLight',
-                'callback': 'setMQTT'
+               'callback': 'setMQTT'
             },
             {
                 'topic': 'julian/lichtschalter1',
@@ -402,6 +411,7 @@ objects['fullLightMultiplier'] = createLight({
         }
     ]
     })
+
 
 objects['heater'] = createLight({
         'class': heaterControl,
@@ -486,22 +496,67 @@ def runScheduled(objectName, args):
     objects[objectName].setScheduler(*json.loads(args))
 
 
+
+joshLight = externalMQTT(client, { 'defaultTopic':'josh/stripLight/cmnd/COLOR' })
+
+def parseJoshColor(path):
+    # path is der string
+
+    if path.find("r=") == -1:
+        print("no color, return")
+        return
+
+    r = path[path.find("r=")+2:path.find("&g=")]
+    g = path[path.find("g=")+2:path.find("&b=")]
+    b = path[path.find("b=")+2:]
+
+    print("rgb:",r,g,b)
+
+    #ambilight.out.set([r,g,b])
+
+    joshLight.send(r+","+g+","+b)
+        
+
+
 class MyServer(BaseHTTPRequestHandler):
     def do_GET(self):
-        if "getJobs" in self.path:
+        pos = self.path.find("?")
+        if (pos == -1):
+            self.normalPath = self.path
+        else:
+            self.normalPath = self.path[:pos]
+
+        print("path:",self.normalPath)
+
+        if "getJobs" in self.normalPath:
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(bytes(events.getJobs(),"utf-8"))
-        else:    
-            if self.path == "/":
-                self.path = "/index.php"
+
+        elif "joshapp/index.html" in self.normalPath:
+            print("calling joshapp")
             try:
-                with open(self.path[1:]) as file:
+                parseJoshColor(self.path)
+            except:
+                pass
+
+            with open(self.normalPath[1:]) as file:
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(bytes(file.read(),"utf-8"))
+
+        else:    
+            if self.normalPath == "/":
+                self.normalPath = "/index.php"
+            try:
+                with open(self.normalPath[1:]) as file:
                     self.send_response(200)
                     self.send_header("Content-type", "text/html")
                     self.end_headers()
                     self.wfile.write(bytes(file.read(),"utf-8"))
+
             except:
                 self.send_response(404)
                 self.end_headers()

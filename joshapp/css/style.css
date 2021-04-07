@@ -1,0 +1,163 @@
+#main{
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: center;
+  align-items: center;
+  background-color: #03a9f4;
+  height: calc(100vh - 128px);
+/* height: 100vh; */
+  overflow-y: auto;
+  width: 100vw;
+
+}
+.roomname{
+  border-bottom: 1px solid wheat;
+  text-align: center;
+  color: white;
+  font-family: sans-serif;
+  padding: 4px 8px;
+}
+.preferncebox{
+  height: min-content;
+  width: auto;
+  min-width: 200px;
+  padding: 10px 30px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 20px;
+}
+.prefernce{
+  height: 320px;
+  width: auto;
+  min-width: 200px;
+  padding: 10px 30px;
+}
+body{
+  margin: 0;
+  padding: 0;
+}
+#reddingclock, #melauneclock{
+  font-size: 2em;
+  color: white;
+  padding: 30px;
+ font-family: sans-serif;
+ float: left;
+}
+#melauneclock{
+  color: #ffffff54;
+}
+.header{
+  width: 100vw;
+  height: 128px;
+  background-color:#3F51B5;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: space-around;
+  /* border-bottom: 1px solid wheat; */
+  box-shadow: 5px 0px 5px black;
+  font-size: 2em;
+}
+
+
+
+
+
+
+
+/* -------------- */
+/*customised range*/ input[type="range"].range
+{
+     cursor: pointer;
+     width: 300px !important;
+     -webkit-appearance: none;
+     z-index: 200;
+     width:50px;
+     border: 1px solid #e6e6e6;
+     background-color: #e6e6e6;
+     background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#e6e6e6), to(#d2d2d2));
+     background-image: -webkit-linear-gradient(right, #e6e6e6, #d2d2d2);
+     background-image: -moz-linear-gradient(right, #e6e6e6, #d2d2d2);
+     background-image: -ms-linear-gradient(right, #e6e6e6, #d2d2d2);
+     background-image: -o-linear-gradient(right, #e6e6e6, #d2d2d2);
+     margin-top: 140px;
+
+}
+
+/*customised range when focusing on input */ input[type="range"].range:focus
+{
+     border: 0 !imporant;
+outline: none !important;
+}
+
+/*customised range slider icon*/ input[type="range"].range::-webkit-slider-thumb
+{
+     -webkit-appearance: none;
+     width: 10px;
+     height: 10px;
+background-color: #555;
+     background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#4DDBFF), to(#00CCFF));
+     background-image: -webkit-linear-gradient(right, #4DDBFF, #00CCFF);
+     background-image: -moz-linear-gradient(right, #4DDBFF, #00CCFF);
+     background-image: -ms-linear-gradient(right, #4DDBFF, #00CCFF);
+     background-image: -o-linear-gradient(right, #4DDBFF, #00CCFF);
+}
+
+/*setting round corners to the range */ input[type="range"].round {
+     -webkit-border-radius: 11px;
+     -moz-border-radius: 11px;
+     border-radius: 11px;
+     height: 50px;
+}
+
+/*setting round corners to the range slider icon*/ input[type="range"].round::-webkit-slider-thumb {
+     -webkit-border-radius: 5px;
+-moz-border-radius: 5px;
+-o-border-radius: 5px;
+}
+
+/* set range from 0 - 1 horizontal as by default */ .horizontal-lowest-first
+{
+     -webkit-transform:rotate(0deg);
+     -moz-transform:rotate(0deg);
+     -o-transform:rotate(0deg);
+     -ms-transform:rotate(0deg);
+     transform:rotate(0deg);
+}
+
+/* set range from 1 - 0 horizontal (highest first) */ .horizontal-highest-first
+{
+     -webkit-transform:rotate(180deg);
+     -moz-transform:rotate(180deg);
+     -o-transform:rotate(180deg);
+     -ms-transform:rotate(180deg);
+     transform:rotate(180deg);
+}
+
+/* set range from 0 - 1 vertically (lowest on top) */ .vertical-lowest-first
+{
+     -webkit-transform:rotate(90deg);
+     -moz-transform:rotate(90deg);
+     -o-transform:rotate(90deg);
+     -ms-transform:rotate(90deg);
+     transform:rotate(90deg);
+}
+
+/* set range from 1 - 0 vertically (highest on top) */ .vertical-highest-first
+{
+     -webkit-transform:rotate(270deg);
+     -moz-transform:rotate(270deg);
+     -o-transform:rotate(270deg);
+     -ms-transform:rotate(270deg);
+     transform:rotate(270deg);
+}
+
+
+input[type="range"].vertical-highest-first::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;
+  border-radius: 20px;
+  height:50px;
+  background:black;
+  position:relative;
+  z-index:3;
+  box-shadow:0 0 5px 0 rgba(0,0,0,0.3);
+}
