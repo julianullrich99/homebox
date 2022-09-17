@@ -1,11 +1,9 @@
 import threading
 import time
-import datetime
 
 import dht11
 import externalMQTT
 import average
-import loggingclass as logging
 
 class heaterControl(threading.Thread):
     def __init__(self,config = {}, name=""):
@@ -14,7 +12,7 @@ class heaterControl(threading.Thread):
         self.targetTemp = 0
         self.currentTemp = 1
         self.heating = 0
-        self.checkInterval = 20 # checkintervall in sekunden (auch fürs logging)
+        self.checkInterval = 5 # checkintervall in sekunden (auch fürs logging)
 
         averageValues = 5
         self.averageTemp = average.average(averageValues)
@@ -28,12 +26,9 @@ class heaterControl(threading.Thread):
             'defaultTopic': config['metricTopic']
         })
 
-
         self.sensor = dht11.dhtSense({
             'pin': config['sensorPin']
         })
-
-        self.logger = logging.logging("csv",{"outputFile":"tempData.csv","format":["time","currTemp","targetTemp","humidity","heating"]})
 
     def run(self):
         while True:
@@ -42,14 +37,6 @@ class heaterControl(threading.Thread):
 
             self.currentTemp = self.averageTemp.get(data['temp'])
             hum = self.averageHum.get(data['hum'])
-
-            self.logger.log({
-                    'time':datetime.datetime.now().isoformat(),
-                    'currTemp': self.currentTemp,
-                    'targetTemp': self.targetTemp,
-                    'humidity': hum,
-                    'heating': self.heating
-                },"temp") 
 
             self.metrics.send(self.currentTemp)
 
