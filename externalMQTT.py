@@ -1,4 +1,3 @@
-import time
 
 class externalMQTT():
     def __init__(self,client,config):

@@ -14,5 +14,4 @@ class average():
 
     def get(self,val): # adds new value and gets new mean
         self.addVal(val)
-        print(self.buf)
         return self.getMean()

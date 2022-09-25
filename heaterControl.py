@@ -33,7 +33,6 @@ class heaterControl(threading.Thread):
     def run(self):
         while True:
             data = self.sensor.read()
-            print(data)
 
             self.currentTemp = self.averageTemp.get(data['temp'])
             hum = self.averageHum.get(data['hum'])
