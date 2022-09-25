@@ -1,23 +1,15 @@
 from __future__ import division
-import socket
 import threading
 import time
-import sys
+import traceback
 import RPi.GPIO as GPIO
 import json
-import signal
-import traceback
 import paho.mqtt.client as mqtt
 from apscheduler.schedulers.background import BackgroundScheduler
-import code
 from pytz import timezone
 import datetime
 import math
-import telnetlib
-from io import BytesIO
-from cgi import parse_header, parse_multipart
 
-from urllib.parse import parse_qs
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -25,6 +17,7 @@ from neopixel import neopixelThread as zoe
 from pwmPCA9685 import pwm as pwm
 from lightOneChannel import lightOneChannel
 from lightRGB import lightRGB
+from runtimeConfigurableMatrix import runtimeConfigurableMatrix
 from toggleOneChannel import toggleOneChannel
 from heaterControl import heaterControl
 from jarvisParser import jarvisParser
@@ -34,13 +27,16 @@ import msc
 
 jarvisParser = jarvisParser()
 
-import colorHelper
 
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
 
 hostName = ""
 serverPort = 8080
+    
+
+
+threading.excepthook = print
 
 def createLight(config):
     obj = config['class'](config['config'])
@@ -48,7 +44,7 @@ def createLight(config):
     obj.start()
     if 'topics' in config:
         for topic in config['topics']:
-            mqttTopics.append({'topic':topic['topic'],'callback':obj.__getattribute__(topic['callback'])})
+            mqttTopics.append({'topic':topic['topic'],'callback':obj.__getattribute__(topic['callback']),'withTopic': topic['withTopic'] if ('withTopic' in topic) else False})
     return obj
 
 mqttTopics = []
@@ -65,6 +61,7 @@ def on_connect(client, userdata, flags, rc):
 
  
 def on_message(client, userdata, msg):
+  try:
     print(msg.topic+" "+str(msg.payload))
 
     if (msg.topic.startswith("jarvis/")):
@@ -75,7 +72,12 @@ def on_message(client, userdata, msg):
 
     for entry in mqttTopics:
         if (msg.topic == entry['topic']):
-            entry['callback'](msg.payload)
+            if (entry['withTopic'] == True):
+                entry['callback'](msg.payload.decode('utf-8'), msg.topic)
+            else:
+                entry['callback'](msg.payload.decode('utf-8'))
+  except Exception as e:
+    traceback.print_exc()
 
 def calc(x):
     #return 0.9784889413 * math.pow(1.021983957,x) - 1
@@ -345,12 +347,13 @@ mainLight = createLight({
         'topics': [
             {
                 'topic': 'julian/mainLight',
-               'callback': 'setMQTT'
+               'callback': 'setMQTT',
+               'withTopic': True
             },
-            {
-                'topic': 'julian/lichtschalter1',
-                'callback': 'switch'
-            }
+            # {
+            #     'topic': 'julian/lichtschalter1',
+            #     'callback': 'switch'
+            # }
         ]
     })
 
@@ -439,6 +442,49 @@ objects['heater'] = createLight({
         #}
 
     #})
+
+mainSwitchMatrix = createLight({
+  'class': runtimeConfigurableMatrix,
+  'config': {
+    'actions': {
+      'mainLightToggle': {
+        'conversion': None,
+        'target': {
+          'fixture': mainLight,
+          'method': 'switch'
+        }
+      },
+      'chainLightToggle': {
+        'conversion': None,
+        'target': {
+          'fixture': nightlightChain,
+          'method': 'setToggle'
+        }
+      }
+    },
+    'templates': {
+      'default': {
+        'julian/lichtschalter1': {
+          'short': {
+            'msg': r"SINGLE",
+            'action': 'mainLightToggle'
+          },
+          'long': {
+            'msg': r"LONG",
+            'action': 'chainLightToggle'
+          }
+        }
+      }
+    }
+  },
+  'topics': [
+    {
+      'topic': 'julian/lichtschalter1',
+      'callback': 'setMQTT',
+      'withTopic': True
+    }
+  ]
+})
 
 tmqtt = mqttThread()
 tmqtt.setDaemon(True)
