@@ -1,12 +1,17 @@
 
+from queue import Queue
 import RPi.GPIO as GPIO
 from pwmPCA9685 import pwm as pwm
 import time
 import threading
 
-class lightOneChannel(threading.Thread):
+from queueRunner import QueueRunner
+
+class lightOneChannel(QueueRunner, threading.Thread, ):
     def __init__(self, config = {}, name="WhiteThread"):
         threading.Thread.__init__(self, name=name)
+
+        self.queue = Queue()
 
         self.inputPin = -1
         if 'dimInput' in config:
@@ -134,7 +139,7 @@ class lightOneChannel(threading.Thread):
         return
 
     def setMQTT(self,value):
-        self.morphto(int(value))
+      self.queue.put({'f':self.morphto, 'a': [int(value)]})
 
     def setToggle(self,value):
         if self.on:

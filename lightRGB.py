@@ -1,13 +1,17 @@
 
+from queue import Queue
 import RPi.GPIO as GPIO
 from pwmPCA9685 import pwmRGB
 import time
 import threading
 import colorHelper
+from queueRunner import QueueRunner
 
-class lightRGB(threading.Thread):
+class lightRGB(QueueRunner, threading.Thread):
     def __init__(self, config = {}, name="WhiteThread"):
         threading.Thread.__init__(self, name=name)
+
+        self.queue = Queue()
 
         self.inputPin = -1
         self.dimColor = [0,0,0]
@@ -168,4 +172,4 @@ class lightRGB(threading.Thread):
 
     def setMQTT(self,invalue):
         value = colorHelper.convertColor(invalue,self.format)
-        self.morphto(value)
+        self.queue.put({'f':self.morphto, 'a': [value]})
