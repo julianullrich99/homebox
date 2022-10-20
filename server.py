@@ -443,6 +443,9 @@ objects['heater'] = createLight({
 
     #})
 
+def alwaysFive(val):
+  return 1
+
 mainSwitchMatrix = createLight({
   'class': runtimeConfigurableMatrix,
   'config': {
@@ -460,6 +463,13 @@ mainSwitchMatrix = createLight({
           'fixture': nightlightChain,
           'method': 'setToggle'
         }
+      },
+      'waterPlants': {
+        'conversion': alwaysFive,
+        'target': {
+          'fixture': objects['waterpump'],
+          'method': 'setMQTT'
+        }
       }
     },
     'templates': {
@@ -472,6 +482,10 @@ mainSwitchMatrix = createLight({
           'long': {
             'msg': r"LONG",
             'action': 'chainLightToggle'
+          },
+          'double': {
+            'msg': r"DOUBLE",
+            'action': 'waterPlants'
           }
         }
       }
