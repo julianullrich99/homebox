@@ -8,8 +8,6 @@ class neopixelThread(threading.Thread):
         """ constructor, setting initial variables """
         threading.Thread.__init__(self, name=name)
 
-
-
         self._stopevent = threading.Event()
 
         self.zoeOldColor = [0,0,0]
@@ -234,11 +232,11 @@ class neopixelThread(threading.Thread):
                 return [0, int(pos * 3 * float(self.zoeBrightness/255)), int((255 - pos * 3) * float(self.zoeBrightness/255))]
 
     def setMQTT(self,mqttVal):
-        if (mqttVal == b'1'):
+        if (mqttVal == '1'):
             self.zoeStartRainbow()
         else:
             self.zoeStopRainbow()
 
     def setColorMQTT(self,val):
-        color = colorHelper.convertColor(val.decode('utf-8'),"888")
+        color = colorHelper.convertColor(val,"888")
         self.zoeSetColor(color)

@@ -28,7 +28,7 @@ import msc
 jarvisParser = jarvisParser()
 
 
-GPIO.setmode(GPIO.BOARD)
+GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 hostName = ""
@@ -222,7 +222,7 @@ nightlightChain = createLight({
         'class': lightOneChannel,
         'config': {
             'output': 3,
-            'dimInput': 18
+            'dimInput': 24
         },
         'topics': [
             {
@@ -257,7 +257,7 @@ bedLight = createLight({
                 'g': 5,
                 'b': 6
             },
-            'dimInput': 22,
+            'dimInput': 25,
             'dimColor': [127,0,255],
             'dimBrightness': 100
         },

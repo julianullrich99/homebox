@@ -1,0 +1,7 @@
+paho-mqtt
+neopixel
+adafruit-circuitpython-pca9685
+sqlalchemy
+dht11
+rpi_ws281x
+APScheduler

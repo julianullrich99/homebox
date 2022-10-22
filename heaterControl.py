@@ -1,7 +1,7 @@
 import threading
 import time
 
-import dht11
+import dht
 import externalMQTT
 import average
 
@@ -26,7 +26,7 @@ class heaterControl(threading.Thread):
             'defaultTopic': config['metricTopic']
         })
 
-        self.sensor = dht11.dhtSense({
+        self.sensor = dht.dhtSense({
             'pin': config['sensorPin']
         })
 

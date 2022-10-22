@@ -1,12 +1,19 @@
 from __future__ import division
 import time
+from board import SCL, SDA
+import busio
 
 # Import the PCA9685 module.
-import Adafruit_PCA9685
+from adafruit_pca9685 import PCA9685
 
-pwmModule = Adafruit_PCA9685.PCA9685(address=0x40)
+# Create the I2C bus interface.
+i2c_bus = busio.I2C(SCL, SDA)
 
-pwmModule.set_pwm_freq(1000)
+# Create a simple PCA9685 class instance.
+pca = PCA9685(i2c_bus)
+
+# Set the PWM frequency to 60hz.
+pca.frequency = 1000
 
 def getPulseLengthForDutyCycle(cycle,max=255):
     # cycle is between 0 and max
@@ -23,7 +30,7 @@ class pwm():
 
     def set(self,val):
         pulse = getPulseLengthForDutyCycle(val,self.res)
-        pwmModule.set_pwm(self.pin, 0, getPulseLengthForDutyCycle(val,self.res))
+        pca.channels[self.pin].duty_cycle = int(0xffff / self.res * val)
         time.sleep(0.0005)
 
 class pwmRGB():
