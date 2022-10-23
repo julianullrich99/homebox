@@ -7,3 +7,11 @@ services:
       - 1883:1883
     volumes:
       - ./conf:/mosquitto/config
+
+  rpi-spotify:
+    image: derkades/raspotify
+    restart: always
+    network_mode: host
+    devices: [ '/dev/snd:/dev/snd' ]
+    environment:
+      SPOTIFY_NAME: Homebox
