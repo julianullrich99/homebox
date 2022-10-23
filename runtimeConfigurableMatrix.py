@@ -33,11 +33,18 @@ class runtimeConfigurableMatrix(QueueRunner, threading.Thread):
       
       resolvedAction = self.actions[action]
 
-      val = value
+      val = [ value ]
       if (type(resolvedAction['conversion']).__name__ == "function"):
         val = resolvedAction['conversion'](value)
 
-      resolvedAction['target']['fixture'].__getattribute__(resolvedAction['target']['method'])(val)
+      if ('arguments' in resolvedAction):
+        resolvedAction['target']['fixture'].__getattribute__(resolvedAction['target']['method'])(*resolvedAction['arguments'])
+      elif type(val).__name__ == 'list':
+        resolvedAction['target']['fixture'].__getattribute__(resolvedAction['target']['method'])(*val)
+      elif type(val).__name__ == 'dict':
+        resolvedAction['target']['fixture'].__getattribute__(resolvedAction['target']['method'])(**val)
+      else:
+        resolvedAction['target']['fixture'].__getattribute__(resolvedAction['target']['method'])(val)
 
     def setMQTT(self, value, topic):
       self.queue.put({ 'f':self.handle, 'a':[value, topic] })

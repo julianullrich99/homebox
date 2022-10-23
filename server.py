@@ -1,29 +1,30 @@
 from __future__ import division
+
+import datetime
+import json
+import math
 import threading
 import time
 import traceback
-import RPi.GPIO as GPIO
-import json
-import paho.mqtt.client as mqtt
-from apscheduler.schedulers.background import BackgroundScheduler
-from pytz import timezone
-import datetime
-import math
-
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from neopixel import neopixelThread as zoe
-from pwmPCA9685 import pwm as pwm
-from lightOneChannel import lightOneChannel
-from lightRGB import lightRGB
-from runtimeConfigurableMatrix import runtimeConfigurableMatrix
-from toggleOneChannel import toggleOneChannel
+
+import paho.mqtt.client as mqtt
+import RPi.GPIO as GPIO
+from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import timezone
+
+import msc
+from externalMQTT import externalMQTT
 from heaterControl import heaterControl
 from jarvisParser import jarvisParser
-from relayOneChannelMQTT import switchMQTT
-from externalMQTT import externalMQTT
-import msc
+from lightOneChannel import lightOneChannel
+from lightRGB import lightRGB
+from neopixel import neopixelThread as zoe
+from pwmPCA9685 import pwm as pwm
+from runtimeConfigurableMatrix import runtimeConfigurableMatrix
+from toggleOneChannel import toggleOneChannel
+from zigbeeMqttLight import zigbeeMqttLight
 
 jarvisParser = jarvisParser()
 
@@ -71,11 +72,17 @@ def on_message(client, userdata, msg):
         client.publish("julian/"+t,v)
 
     for entry in mqttTopics:
-        if (msg.topic == entry['topic']):
+
+        cleanTopic = entry['topic']
+        if cleanTopic.endswith('#'):
+          cleanTopic = cleanTopic[:-1]
+
+        if (msg.topic == entry['topic']) or (msg.topic.startswith(cleanTopic) and cleanTopic != entry['topic']):
             if (entry['withTopic'] == True):
                 entry['callback'](msg.payload.decode('utf-8'), msg.topic)
             else:
                 entry['callback'](msg.payload.decode('utf-8'))
+
   except Exception as e:
     traceback.print_exc()
 
@@ -338,22 +345,37 @@ objects['waterpump'] = createLight({
         ]
     })
 
+# mainLight = createLight({
+#         'class': switchMQTT,
+#         'config': {
+#             'mqttClient': client,
+#             'switchTopic': 'sonoff/mainLight/cmnd/tasmota_switch/Power'
+#         },
+#         'topics': [
+#             {
+#                'topic': 'julian/mainLight',
+#                'callback': 'setMQTT',
+#                'withTopic': True
+#             },
+#             # {
+#             #     'topic': 'julian/lichtschalter1',
+#             #     'callback': 'switch'
+#             # }
+#         ]
+#     })
+
 mainLight = createLight({
-        'class': switchMQTT,
+        'class': zigbeeMqttLight,
         'config': {
             'mqttClient': client,
-            'switchTopic': 'sonoff/mainLight/cmnd/tasmota_switch/Power'
+            'name': 'mainlight',
         },
         'topics': [
             {
-                'topic': 'julian/mainLight',
+               'topic': 'julian/mainLight/#',
                'callback': 'setMQTT',
                'withTopic': True
             },
-            # {
-            #     'topic': 'julian/lichtschalter1',
-            #     'callback': 'switch'
-            # }
         ]
     })
 
@@ -443,18 +465,17 @@ objects['heater'] = createLight({
 
     #})
 
-def alwaysFive(val):
-  return 1
 
 mainSwitchMatrix = createLight({
   'class': runtimeConfigurableMatrix,
   'config': {
     'actions': {
       'mainLightToggle': {
-        'conversion': None,
+        'conversion': lambda a: {} if a == 'SINGLE' else {'reset': True},
+        # 'arguments': [],
         'target': {
           'fixture': mainLight,
-          'method': 'switch'
+          'method': 'toggle'
         }
       },
       'chainLightToggle': {
@@ -465,7 +486,7 @@ mainSwitchMatrix = createLight({
         }
       },
       'waterPlants': {
-        'conversion': alwaysFive,
+        'conversion': lambda a: 1,
         'target': {
           'fixture': objects['waterpump'],
           'method': 'setMQTT'
@@ -485,7 +506,7 @@ mainSwitchMatrix = createLight({
           },
           'double': {
             'msg': r"DOUBLE",
-            'action': 'waterPlants'
+            'action': 'mainLightToggle'
           }
         }
       }

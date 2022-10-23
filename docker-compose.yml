@@ -1,4 +1,4 @@
-version: "3"
+version: "3.6"
 services:
   mosquitto:
     image: eclipse-mosquitto
@@ -8,6 +8,22 @@ services:
     volumes:
       - ./conf:/mosquitto/config
 
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    restart: always
+    depends_on:
+      - mosquitto
+    # user: 1000:1000
+    devices:
+      - '/dev/serial/by-id/usb-Texas_Instruments_TI_CC2531_USB_CDC___0X00124B0018E1F462-if00:/dev/ttyACM0'
+    ports:
+      - '8081:8080'
+    volumes:
+      - ./zigbee:/app/data
+      - '/run/udev:/run/udev:ro'
+    environment:
+      - TZ=Europe/Amsterdam
+    image: koenkk/zigbee2mqtt
   rpi-spotify:
     image: derkades/raspotify
     restart: always
