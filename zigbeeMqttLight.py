@@ -7,7 +7,7 @@ class zigbeeMqttLight(zigbeeMqtt):
 
     self.state = False
     self.brightness = 254
-    self.colorTemp = 254
+    self.colorTemp = 290
 
   def set(self, key, value):
     if key == 'toggle':
@@ -55,7 +55,7 @@ class zigbeeMqttLight(zigbeeMqtt):
       self.state = False # treat as if its off -> switch on in any case
     if reset:
       self.brightness = 254
-      self.colorTemp = 254
+      self.colorTemp = 290
       self.state = False
 
     self.set('toggle', '')
