@@ -668,6 +668,7 @@ class MyServer(BaseHTTPRequestHandler):
 
 def main():
     webServer = HTTPServer((hostName, serverPort), MyServer)
+    mainLight.okay()
 
     try:
         webServer.serve_forever()
