@@ -1,25 +1,30 @@
 import RPi.GPIO as GPIO
-import dht11
+import adafruit_dht
 
 class dhtSense():
     def __init__(self,config={}):
         self.config = config
 
+        print(config)
         GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
+        GPIO.setwarnings(True)
         
-        self.sensor = dht11.DHT11(pin = config['pin'])
+        self.sensor = adafruit_dht.DHT11(self.config['pin'])
 
-        # self.sensor = dht.DHT11
-        # self.pin = config['pin']
+        self.lastTemp = 1
+        self.lastHum = 1
 
     def read(self):
-        data = self.sensor.read()
-        # print(data.temperature)
-        # print(data.humidity)
-        # print(data.is_valid())
+      try:
+        self.lastTemp = self.sensor.temperature
+        self.lastHum = self.sensor.humidity
+      except:
+        # print("could not read dht11 sensor")
+        pass
+      
+      # print(self.lastTemp)
 
-        return {
-            'temp': data.temperature,
-            'hum': data.humidity
-        }
+      return {
+          'temp': self.lastTemp,
+          'hum': self.lastHum
+      }

@@ -443,7 +443,7 @@ objects['heater'] = createLight({
         'config': {
             'mqttClient': client,
             'switchTopic': 'sonoff/heizung/cmnd/tasmota_switch/Power',
-            'sensorPin': 5,
+            'sensorPin': 4,
             'metricTopic': 'julian/currTemp',
         },
         'topics': [
