@@ -5,3 +5,6 @@ spotify
 *.pyc
 .env
 tempData.csv
+zigbee
+log
+data

@@ -376,6 +376,10 @@ mainLight = createLight({
                'callback': 'setMQTT',
                'withTopic': True
             },
+            {
+              'topic': 'julian/mainLight/increase',
+              'callback': 'increment'
+            }
         ]
     })
 

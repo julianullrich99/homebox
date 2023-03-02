@@ -42,7 +42,22 @@ class zigbeeMqttLight(zigbeeMqtt):
   def turnOff(self):
     self.state = False
     super().set('state', 'OFF')
-  
+
+  def increment(self, val):
+    val = int(val)
+    print(val)
+    if val > 0:
+      if not self.state:
+        self.set('brightness', val)
+      elif self.brightness <= 255 - val:
+        self.set('brightness', self.brightness+val)
+    else:
+      if self.brightness >= val*-1:
+        self.set('brightness', self.brightness+val)
+      else:
+        self.brightness = 200
+        self.turnOff()
+
   def okay(self):
     self.queue.put({ 'f':self.set, 'a':['effect', 'okay'] })
   
@@ -55,7 +70,7 @@ class zigbeeMqttLight(zigbeeMqtt):
       self.state = False # treat as if its off -> switch on in any case
     if reset:
       self.brightness = 254
-      self.colorTemp = 290
+      self.colorTemp = 310
       self.state = False
 
     self.set('toggle', '')
