@@ -449,11 +449,16 @@ objects['heater'] = createLight({
             'switchTopic': 'sonoff/heizung/cmnd/tasmota_switch/Power',
             'sensorPin': 4,
             'metricTopic': 'julian/currTemp',
+            'heaterActiveTopic': 'julian/heizungActive',
         },
         'topics': [
             {
                 'topic': 'julian/heizung',
                 'callback': 'setMQTT'
+            },
+            {
+                'topic': 'julian/heizungActive',
+                'callback': 'setActive'
             }
         ]
     })

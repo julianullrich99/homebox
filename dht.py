@@ -11,15 +11,15 @@ class dhtSense():
         
         self.sensor = adafruit_dht.DHT11(self.config['pin'])
 
-        self.lastTemp = 1
-        self.lastHum = 1
+        self.lastTemp = 1.0
+        self.lastHum = 1.0
 
     def read(self):
       try:
         self.lastTemp = self.sensor.temperature
         self.lastHum = self.sensor.humidity
-      except:
-        # print("could not read dht11 sensor")
+      except Exception as e:
+        # print(e)
         pass
       
       # print(self.lastTemp)
