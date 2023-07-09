@@ -24,6 +24,7 @@ services:
     environment:
       - TZ=Europe/Amsterdam
     image: koenkk/zigbee2mqtt
+
   rpi-spotify:
     image: derkades/raspotify
     restart: always

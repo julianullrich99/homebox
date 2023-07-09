@@ -34,18 +34,24 @@ GPIO.setwarnings(False)
 
 hostName = ""
 serverPort = 8080
-    
-
 
 threading.excepthook = print
 
 def createLight(config):
     obj = config['class'](config['config'])
-    obj.setDaemon(True)
-    obj.start()
+    try: #trycatch so we dont need threading always
+      obj.setDaemon(True)
+      obj.start()
+    except:
+      pass
     if 'topics' in config:
         for topic in config['topics']:
-            mqttTopics.append({'topic':topic['topic'],'callback':obj.__getattribute__(topic['callback']),'withTopic': topic['withTopic'] if ('withTopic' in topic) else False})
+            mqttTopics.append({
+              'topic':topic['topic'],
+              'callback':obj.__getattribute__(topic['callback']),
+              'withTopic': topic['withTopic'] if ('withTopic' in topic) else False,
+              'conversion': topic['conversion'] if ('conversion' in topic) else None
+            })
     return obj
 
 mqttTopics = []
@@ -76,12 +82,20 @@ def on_message(client, userdata, msg):
         cleanTopic = entry['topic']
         if cleanTopic.endswith('#'):
           cleanTopic = cleanTopic[:-1]
-
+        
         if (msg.topic == entry['topic']) or (msg.topic.startswith(cleanTopic) and cleanTopic != entry['topic']):
+
+            print(entry)
+            value = msg.payload.decode('utf-8')
+
+            if (callable(entry['conversion'])):
+                print('converting')
+                value = entry['conversion'](value)
+
             if (entry['withTopic'] == True):
-                entry['callback'](msg.payload.decode('utf-8'), msg.topic)
+                entry['callback'](value, msg.topic)
             else:
-                entry['callback'](msg.payload.decode('utf-8'))
+                entry['callback'](value)
 
   except Exception as e:
     traceback.print_exc()
@@ -272,6 +286,10 @@ bedLight = createLight({
             {
                 'topic':'julian/bedLight',
                 'callback':'setMQTT'
+            },
+            {
+                'topic':'julian/bedLightHomebridge',
+                'callback':'setHomebridge'
             }
         ]
     })
@@ -379,9 +397,28 @@ mainLight = createLight({
             {
               'topic': 'julian/mainLight/increase',
               'callback': 'increment'
+            },
+            {
+                'topic':'julian/mainLightHomebridge',
+                'callback':'setHomebridge'
             }
         ]
     })
+
+createLight({
+  'name': 'Nachtlicht Sarah',
+  'class': externalMQTT,
+  'config': {
+      'client': client,
+      'name': 'Nachtlicht Sarah',
+      'defaultTopic': 'bedroom/nightlight/brightness'
+  },
+  'topics': [{
+      'topic': 'julian/nightlight/brightness',
+      'conversion': lambda a: int(a,16),
+      'callback': 'send'
+  }]
+})
 
 neopixel = createLight({
         'class': zoe,
@@ -585,29 +622,6 @@ def parse(data,conn=None):
 def runScheduled(objectName, args):
     objects[objectName].setScheduler(*json.loads(args))
 
-
-
-joshLight = externalMQTT(client, { 'defaultTopic':'josh/stripLight/cmnd/COLOR' })
-
-def parseJoshColor(path):
-    # path is der string
-
-    if path.find("r=") == -1:
-        print("no color, return")
-        return
-
-    r = path[path.find("r=")+2:path.find("&g=")]
-    g = path[path.find("g=")+2:path.find("&b=")]
-    b = path[path.find("b=")+2:]
-
-    print("rgb:",r,g,b)
-
-    #ambilight.out.set([r,g,b])
-
-    joshLight.send(r+","+g+","+b)
-        
-
-
 class MyServer(BaseHTTPRequestHandler):
     def do_GET(self):
         pos = self.path.find("?")
@@ -677,7 +691,7 @@ class MyServer(BaseHTTPRequestHandler):
 
 def main():
     webServer = HTTPServer((hostName, serverPort), MyServer)
-    mainLight.okay()
+    # mainLight.okay()
 
     try:
         webServer.serve_forever()

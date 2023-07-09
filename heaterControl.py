@@ -19,16 +19,19 @@ class heaterControl(threading.Thread):
         self.averageTemp = average.average(averageValues)
         self.averageHum = average.average(averageValues)
 
-        self.switch = externalMQTT.externalMQTT(config['mqttClient'], {
-            'defaultTopic': config['switchTopic']
+        self.switch = externalMQTT.externalMQTT({
+            'defaultTopic': config['switchTopic'],
+            'client': config['mqttClient']
         })
 
-        self.metrics = externalMQTT.externalMQTT(config['mqttClient'], {
-            'defaultTopic': config['metricTopic']
+        self.metrics = externalMQTT.externalMQTT({
+            'defaultTopic': config['metricTopic'],
+            'client': config['mqttClient']
         })
 
-        self.heaterActiveMqtt = externalMQTT.externalMQTT(config['mqttClient'], {
-            'defaultTopic': config['heaterActiveTopic']
+        self.heaterActiveMqtt = externalMQTT.externalMQTT({
+            'defaultTopic': config['heaterActiveTopic'],
+            'client': config['mqttClient']
         })
 
         self.sensor = dht.dhtSense({
@@ -40,9 +43,9 @@ class heaterControl(threading.Thread):
             data = self.sensor.read()
 
             self.currentTemp = self.averageTemp.get(data['temp'])
-            hum = self.averageHum.get(data['hum'])
+            # hum = self.averageHum.get(data['hum'])
 
-            self.metrics.send(self.currentTemp)
+            self.metrics.send(data['temp'])
 
             if (self.active):
               if (self.targetTemp > self.currentTemp):

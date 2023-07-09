@@ -9,7 +9,10 @@ class dhtSense():
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(True)
         
-        self.sensor = adafruit_dht.DHT11(self.config['pin'])
+        try:
+          self.sensor = adafruit_dht.DHT11(self.config['pin'])
+        except Exception as e:
+          print(e)
 
         self.lastTemp = 1.0
         self.lastHum = 1.0

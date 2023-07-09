@@ -18,8 +18,9 @@ class switchMQTT(QueueRunner, threading.Thread):
             print("inputPin für relay:",self.inputPin)
             GPIO.add_event_detect(self.inputPin, GPIO.FALLING, callback=self.switch)
 
-        self.relay = externalMQTT.externalMQTT(config['mqttClient'], {
-            'defaultTopic': config['switchTopic']
+        self.relay = externalMQTT.externalMQTT({
+            'defaultTopic': config['switchTopic'],
+            'client': config['mqttClient']
         })
 
         self.state = False

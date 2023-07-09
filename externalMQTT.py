@@ -1,8 +1,8 @@
 
 class externalMQTT():
-    def __init__(self,client,config):
+    def __init__(self,config):
         self.config = config
-        self.client = client
+        self.client = self.config['client']
 
         self.defaultTopic = ''
 

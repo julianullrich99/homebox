@@ -75,3 +75,8 @@ class zigbeeMqttLight(zigbeeMqtt):
 
     self.set('toggle', '')
 
+  def setHomebridge(self, input):
+      with self.queue.mutex:
+        self.queue.queue.clear()
+      self.queue.put({'f':self.set, 'a': ['brightness', int(int(input) * 2.55)]})
+      print(input)

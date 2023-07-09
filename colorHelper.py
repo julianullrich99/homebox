@@ -6,6 +6,9 @@ def convertColor(value, colorformat):
 
     elif (colorformat == 'hex'):
         value = [int(value[0:2],16), int(value[2:4],16), int(value[4:6],16)]
+
+    elif (colorformat == 'comma255'):
+        value = [int(value.split(',')[0]), int(value.split(',')[1]), int(value.split(',')[2])]
         
     return value
 

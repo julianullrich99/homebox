@@ -11,8 +11,9 @@ class zigbeeMqtt(QueueRunner, threading.Thread):
 
         self.queue = Queue()
 
-        self.target = externalMQTT(config['mqttClient'], {
-            'defaultTopic': "zigbee2mqtt/" + config['name'] + "/set"
+        self.target = externalMQTT({
+            'defaultTopic': "zigbee2mqtt/" + config['name'] + "/set",
+            'client': config['mqttClient']
         })
     
     def set(self, key, value):

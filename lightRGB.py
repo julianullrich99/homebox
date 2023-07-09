@@ -173,3 +173,12 @@ class lightRGB(QueueRunner, threading.Thread):
     def setMQTT(self,invalue):
         value = colorHelper.convertColor(invalue,self.format)
         self.queue.put({'f':self.morphto, 'a': [value]})
+
+    def setHomebridge(self, input):
+        value = colorHelper.convertColor(input,'hex')
+        # while (not self.queue.empty()):
+        #     self.queue.get_nowait()
+        with self.queue.mutex:
+          self.queue.queue.clear()
+        self.queue.put({'f':self.morphto, 'a': [value]})
+        print(input)
