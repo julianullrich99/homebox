@@ -25,10 +25,10 @@ services:
       - TZ=Europe/Amsterdam
     image: koenkk/zigbee2mqtt
 
-  rpi-spotify:
-    image: derkades/raspotify
-    restart: always
-    network_mode: host
-    devices: [ '/dev/snd:/dev/snd' ]
-    environment:
-      SPOTIFY_NAME: Homebox
+#  rpi-spotify:
+#    image: derkades/raspotify
+#    restart: always
+#    network_mode: host
+#    devices: [ '/dev/snd:/dev/snd' ]
+#    environment:
+#      SPOTIFY_NAME: Homebox

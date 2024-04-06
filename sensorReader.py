@@ -5,7 +5,7 @@ import dht
 import externalMQTT
 import average
 
-class heaterControl(threading.Thread):
+class sensorReader(threading.Thread):
     def __init__(self,config = {}, name=""):
         threading.Thread.__init__(self, name=name)
 
@@ -14,8 +14,6 @@ class heaterControl(threading.Thread):
         self.heating = 0
         self.checkInterval = 5 # checkintervall in sekunden (auch fürs logging)
         self.active = False
-        self.config = config
-        self.metricTopic = config['metricTopic']
 
         averageValues = 5
         self.averageTemp = average.average(averageValues)
@@ -42,30 +40,23 @@ class heaterControl(threading.Thread):
 
     def run(self):
         while True:
-            try:
-                data = self.sensor.read()
+            data = self.sensor.read()
 
-                if data['temp'] == 1 and data['hum'] == 1:
-                        continue 
+            self.currentTemp = self.averageTemp.get(data['temp'])
+            # hum = self.averageHum.get(data['hum'])
 
+            self.metrics.send(data['temp'])
 
-                self.currentTemp = self.averageTemp.get(data['temp'])
-
-                self.metrics.send(data['temp'], f"{self.metricTopic}/temp")
-                self.metrics.send(data['hum'], f"{self.metricTopic}/hum")
-
-                if (self.active):
-                  if (self.targetTemp > self.currentTemp):
-                      self.switch.send(1)
-                      self.heating = 1
-                  else:
-                      self.switch.send(0)
-                      self.heating = 0
-                else:
+            if (self.active):
+              if (self.targetTemp > self.currentTemp):
+                  self.switch.send(1)
+                  self.heating = 1
+              else:
                   self.switch.send(0)
+                  self.heating = 0
+            else:
+              self.switch.send(0)
 
-            except:
-                pass
             time.sleep(self.checkInterval)
 
     def setMQTT(self,value):

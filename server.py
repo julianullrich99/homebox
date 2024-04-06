@@ -25,6 +25,8 @@ from pwmPCA9685 import pwm as pwm
 from runtimeConfigurableMatrix import runtimeConfigurableMatrix
 from toggleOneChannel import toggleOneChannel
 from zigbeeMqttLight import zigbeeMqttLight
+from internalPWM import internalPWM
+from bedAutoShutoff import bedAutoShutoff
 
 jarvisParser = jarvisParser()
 
@@ -54,8 +56,21 @@ def createLight(config):
             })
     return obj
 
-mqttTopics = []
+mqttTopics: list[dict] = []
 objects = {}
+
+mqttAdditionalMessageHandlers = []
+
+def mqttTime():
+    lastString = ""
+    tz = timezone('Europe/Berlin')
+    while True:
+        currentTime = datetime.datetime.now(tz)
+        newString = currentTime.strftime("%H:%M")
+        if newString != lastString:
+            lastString = newString
+            client.publish("time/h-m",lastString)
+        time.sleep(1)
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -66,8 +81,14 @@ def on_connect(client, userdata, flags, rc):
 
     client.subscribe("jarvis/#")
 
+    threading.Thread(target=mqttTime).start()
  
 def on_message(client, userdata, msg):
+  for handler in mqttAdditionalMessageHandlers:
+    if callable(handler):
+      if handler(msg):
+        return
+
   try:
     print(msg.topic+" "+str(msg.payload))
 
@@ -78,24 +99,21 @@ def on_message(client, userdata, msg):
         client.publish("julian/"+t,v)
 
     for entry in mqttTopics:
-
         cleanTopic = entry['topic']
         if cleanTopic.endswith('#'):
           cleanTopic = cleanTopic[:-1]
         
         if (msg.topic == entry['topic']) or (msg.topic.startswith(cleanTopic) and cleanTopic != entry['topic']):
-
-            print(entry)
             value = msg.payload.decode('utf-8')
 
-            if (callable(entry['conversion'])):
-                print('converting')
+            if (callable(entry.get('conversion'))):
                 value = entry['conversion'](value)
 
-            if (entry['withTopic'] == True):
-                entry['callback'](value, msg.topic)
-            else:
-                entry['callback'](value)
+            if (callable(entry.get('callback'))):
+              if (entry['withTopic'] == True):
+                  entry['callback'](value, msg.topic)
+              else:
+                  entry['callback'](value)
 
   except Exception as e:
     traceback.print_exc()
@@ -243,32 +261,115 @@ nightlightChain = createLight({
         'class': lightOneChannel,
         'config': {
             'output': 3,
-            'dimInput': 24
+            'dimInput': 24,
+            'morphingTime': 500
         },
         'topics': [
+            {
+                'topic':'bedroom/nightlight/switchExt',
+                'callback':'externalDimInput'
+            },
             {
                 'topic':'julian/nightlightChain',
-                'callback':'setMQTT'
-            },
-#            {
-#                'topic':'julian/lichtschalter1',
-#                'callback':'setToggle'
-#            }
-        ]
-    })
-
-deskLight = createLight({
-        'class': lightOneChannel,
-        'config': {
-            'output': 2
-        },
-        'topics': [
-            {
-                'topic':'julian/deskLight',
                 'callback':'setMQTT'
             }
         ]
     })
+  
+bedFan = createLight({
+        'class': lightOneChannel,
+        'config': {
+            'output': 9,
+            'morphingTime': 0
+        },
+        'topics': [
+            {
+                'topic':'julian/bedFan',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+bedPeltier = createLight({
+        'class': lightOneChannel,
+        'config': {
+            'output': 1,
+            'morphingTime': 0
+        },
+        'topics': [
+            {
+                'topic':'julian/bedPeltier',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+bedPump = createLight({
+        'class': lightOneChannel,
+        'config': {
+            'output': 8,
+            'morphingTime': 0
+        },
+        'topics': [
+            {
+                'topic':'julian/bedPump',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+bedPumpPwm = createLight({
+        'class': internalPWM,
+        'config': {
+            'output': 19,
+            'freq': 25000,
+            'startValue': 100
+        },
+        'topics': [
+            {
+                'topic':'julian/bedPumpPwm',
+                'callback':'setMQTT'
+            }
+        ]
+    })
+
+bedAutoShutoff = createLight({
+    'class':bedAutoShutoff,
+    'config': {
+        'client': client
+    },
+    'topics': [
+        {
+            'topic':'bed/temp2',
+            'callback':'handleNewMessage',
+            'withTopic': True
+        }
+    ]
+})
+
+# def bedAutoShutoff():
+#     mqttTopics.append({'topic':"bed/temp2"}) # bed temp internal
+  
+#     triggerTime = 60
+#     isOver30 = False
+#     timeOver30 = -1
+#     timeUnder30 = -1
+
+
+#     while True:
+#       time.sleep(10)
+#       if timeOver30 != -1 and time.time() - timeOver30 > triggerTime and not isOver30: # if it is over 30 for more than 10 minutes, set the flag
+#         isOver30 = True
+#         print('triggering over30 true')
+#       if timeUnder30 != -1 and time.time() - timeUnder30 > triggerTime and isOver30: # if it falls under 30 but was triggered to be over 30 before, set it to be under and shut off
+#         isOver30 = False
+#         print('triggering over30 false')
+#         client.publish('julian/bedPump', 0)
+#         client.publish('julian/bedFan', 0)
+#         client.publish('julian/bedPeltier', 0)
+      
+
+# threading.Thread(target=bedAutoShutoff, daemon=True).start()
 
 bedLight = createLight({
         'class': lightRGB,
@@ -294,99 +395,297 @@ bedLight = createLight({
         ]
     })
 
-ambilight = createLight({
-        'class': lightRGB,
-        'config': {
-            'output': {
-                'r': 8,
-                'g': 9,
-                'b': 10
-            },
-        },
-        'topics': [
-            {
-                'topic':'julian/ambiLight',
-                'callback':'setMQTT'
-            }
-        ]
-    })
-
-whiteboardLight = createLight({
-        'class': lightRGB,
-        'config': {
-            'output': {
-                'r': 13,
-                'g': 11,
-                'b': 12
-            },
-        },
-        'topics': [
-            {
-                'topic':'julian/whiteboardLight',
-                'callback':'setMQTT'
-            }
-        ]
-    })
-
-underbedLight = createLight({
-        'class': lightRGB,
-        'config': {
-            'output': {
-                'r': 14,
-                'g': 15,
-                'b': 16
-            },
-        },
-        'topics': [
-            {
-                'topic':'julian/underbedlight',
-                'callback':'setMQTT'
-            }
-        ]
-    })
-
-objects['waterpump'] = createLight({
-        'class': toggleOneChannel,
-        'config': {
-            'output': 7,
-            'timer': 5
-        },
-        'topics': [
-            {
-                'topic':'julian/waterpump',
-                'callback':'setMQTT'
-            },
-#            {
-#                'topic':'julian/lichtschalter1',
-#                'callback':'setMQTT'
-#            }
-        ]
-    })
-
-# mainLight = createLight({
-#         'class': switchMQTT,
+# ambilight = createLight({
+#         'class': lightRGB,
 #         'config': {
-#             'mqttClient': client,
-#             'switchTopic': 'sonoff/mainLight/cmnd/tasmota_switch/Power'
+#             'output': {
+#                 'r': 8,
+#                 'g': 9,
+#                 'b': 10
+#             },
 #         },
 #         'topics': [
 #             {
-#                'topic': 'julian/mainLight',
-#                'callback': 'setMQTT',
-#                'withTopic': True
-#             },
-#             # {
-#             #     'topic': 'julian/lichtschalter1',
-#             #     'callback': 'switch'
-#             # }
+#                 'topic':'julian/ambiLight',
+#                 'callback':'setMQTT'
+#             }
 #         ]
 #     })
+
+# whiteboardLight = createLight({
+#         'class': lightRGB,
+#         'config': {
+#             'output': {
+#                 'r': 13,
+#                 'g': 11,
+#                 'b': 12
+#             },
+#         },
+#         'topics': [
+#             {
+#                 'topic':'julian/whiteboardLight',
+#                 'callback':'setMQTT'
+#             }
+#         ]
+#     })
+
+# underbedLight = createLight({
+#         'class': lightRGB,
+#         'config': {
+#             'output': {
+#                 'r': 14,
+#                 'g': 15,
+#                 'b': 16
+#             },
+#         },
+#         'topics': [
+#             {
+#                 'topic':'julian/underbedlight',
+#                 'callback':'setMQTT'
+#             }
+#         ]
+#     })
+
+# objects['waterpump'] = createLight({
+#         'class': toggleOneChannel,
+#         'config': {
+#             'output': 7,
+#             'timer': 5
+#         },
+#         'topics': [
+#             {
+#                 'topic':'julian/waterpump',
+#                 'callback':'setMQTT'
+#             },
+# #            {
+# #                'topic':'julian/lichtschalter1',
+# #                'callback':'setMQTT'
+# #            }
+#         ]
+#     })
+
+hallLight = createLight({
+        'class': zigbeeMqttLight,
+        'config': {
+            'mqttClient': client,
+            'name': 'hall',
+            'colorTempEnabled': False
+        },
+        'topics': [
+            {
+               'topic': 'hall/light/#',
+               'callback': 'setMQTT',
+               'withTopic': True
+            },
+            {
+                'topic':'hall/lightHomebridge',
+                'callback':'setHomebridge',
+                'conversion': lambda val: int(val,16)/2.55
+            }
+        ]
+    })
+
+workingRoomLight = createLight({
+        'class': zigbeeMqttLight,
+        'config': {
+            'mqttClient': client,
+            'name': 'working',
+            'colorTempEnabled': False
+        },
+        'topics': [
+            {
+               'topic': 'working/light/#',
+               'callback': 'setMQTT',
+               'withTopic': True
+            },
+            {
+                'topic':'working/lightHomebridge',
+                'callback':'setHomebridge',
+                'conversion': lambda val: int(val,16)/2.55
+
+            }
+        ]
+    })
+
+livingRoomLight = createLight({
+        'class': zigbeeMqttLight,
+        'config': {
+            'mqttClient': client,
+            'name': 'living',
+            'colorTempEnabled': False
+        },
+        'topics': [
+            {
+               'topic': 'living/light/#',
+               'callback': 'setMQTT',
+               'withTopic': True
+            },
+            {
+                'topic':'living/lightHomebridge',
+                'callback':'setHomebridge',
+                'conversion': lambda val: int(val,16)/2.55
+
+            }
+        ]
+    })
+
+bathroomLight = createLight({
+        'class': zigbeeMqttLight,
+        'config': {
+            'mqttClient': client,
+            'name': 'bathroom',
+            'colorTempEnabled': False
+        },
+        'topics': [
+            {
+               'topic': 'bathroom/light/#',
+               'callback': 'setMQTT',
+               'withTopic': True
+            },
+            {
+                'topic':'bathroom/lightHomebridge',
+                'callback':'setHomebridge',
+                'conversion': lambda val: int(val,16)/2.55
+
+            }
+        ]
+    })
+
+nightAmbientMultiplier = createLight({
+    'class':msc.taskMultiplier,
+    'config': {
+        'outputs': [
+            {
+                'setFunction': bathroomLight.setObject,
+                'conversion': lambda a: {'key': 'brightness', 'value': 10}
+            },
+            {
+                'setFunction': hallLight.setObject,
+                'conversion': lambda a: {'key': 'brightness', 'value': 10}
+            },
+        ]
+    },
+    'topics': [ ]
+    })
+
+createLight({
+  'class': runtimeConfigurableMatrix,
+  'config': {
+    'actions': {
+      'hallLightToggle': {
+        'conversion': lambda a: {'resetBrightnessOnToggle': True},
+        'target': {
+          'fixture': hallLight,
+          'method': 'toggle'
+        }
+      },
+      'bathroomLightToggle': {
+        'conversion': lambda a: {'resetBrightnessOnToggle': True},
+        'target': {
+          'fixture': bathroomLight,
+          'method': 'toggle'
+        }
+      },
+      'livingLightDark': {
+        'conversion': lambda a: {'brightness': 10},
+        'target': {
+          'fixture': livingRoomLight,
+          'method': 'toggle'
+        }
+      },
+      'livingLightToggle': {
+        'conversion': lambda a: {'resetBrightnessOnToggle': True},
+        'target': {
+          'fixture': livingRoomLight,
+          'method': 'toggle'
+        }
+      },
+      'workingLightToggle': {
+        'conversion': lambda a: {'resetBrightnessOnToggle': True},
+        'target': {
+          'fixture': workingRoomLight,
+          'method': 'toggle'
+        }
+      },
+      'nightAmbientToggle': {
+        'conversion': None,
+        'target': {
+          'fixture': nightAmbientMultiplier,
+          'method': 'setMQTT'
+        }
+      },
+    },
+    'templates': {
+      'default': {
+        'hall/switch': {
+          'short': {
+            'msg': r"SINGLE",
+            'action': 'hallLightToggle'
+          },
+          'long': {
+            'msg': r"LONG",
+            'action': 'nightAmbientToggle'
+          }
+        },
+        'bath/switch': {
+          'short': {
+            'msg': r"SINGLE",
+            'action': 'bathroomLightToggle'
+          },
+          'long': {
+            'msg': r"LONG",
+            'action': 'nightAmbientToggle'
+          }
+        },
+        'living/switch': {
+          'short': {
+            'msg': r"SINGLE",
+            'action': 'livingLightToggle'
+          },
+          'long': {
+            'msg': r"LONG",
+            'action': 'livingLightDark'
+          }
+        },
+        'working/switch': {
+          'short': {
+            'msg': r"SINGLE",
+            'action': 'workingLightToggle'
+          }
+        }
+      }
+    }
+  },
+  'topics': [
+    {
+      'topic': 'hall/switch',
+      'callback': 'setMQTT',
+      'withTopic': True
+    },
+    {
+      'topic': 'working/switch',
+      'callback': 'setMQTT',
+      'withTopic': True
+    },
+    {
+      'topic': 'bath/switch',
+      'callback': 'setMQTT',
+      'withTopic': True
+    },
+    {
+      'topic': 'living/switch',
+      'callback': 'setMQTT',
+      'withTopic': True
+    }
+  ]
+})
 
 mainLight = createLight({
         'class': zigbeeMqttLight,
         'config': {
             'mqttClient': client,
             'name': 'mainlight',
+            'colorTempEnabled': True
         },
         'topics': [
             {
@@ -405,6 +704,16 @@ mainLight = createLight({
         ]
     })
 
+objects['outsideChainlight'] = createLight({
+  'name': 'Lichterkette Außen',
+  'class': externalMQTT,
+  'config': {
+      'client': client,
+      'name': 'Lichterkette Außen',
+      'defaultTopic': 'cmnd/tasmota_plug2/Power'
+  }
+})
+
 createLight({
   'name': 'Nachtlicht Sarah',
   'class': externalMQTT,
@@ -420,97 +729,62 @@ createLight({
   }]
 })
 
-neopixel = createLight({
-        'class': zoe,
-        'config': { },
-        'topic': 'julian/zoeRainbow',
-        'topics': [
-            {
-                'topic':'julian/zoeRainbow',
-                'callback':'setMQTT'
-            },
-            {
-                'topic':'julian/zoeColor',
-                'callback':'setColorMQTT'
-            },
-            {
-                'topic':'julian/zoeListening',
-                'callback':'zoeSetListening'
-            },
-            {
-                'topic':'jarvis/recording',
-                'callback':'zoeSetListening'
-            }
-        ]
-    })
+# neopixel = createLight({
+#         'class': zoe,
+#         'config': { },
+#         'topic': 'julian/zoeRainbow',
+#         'topics': [
+#             {
+#                 'topic':'julian/zoeRainbow',
+#                 'callback':'setMQTT'
+#             },
+#             {
+#                 'topic':'julian/zoeColor',
+#                 'callback':'setColorMQTT'
+#             },
+#             {
+#                 'topic':'julian/zoeListening',
+#                 'callback':'zoeSetListening'
+#             },
+#             {
+#                 'topic':'jarvis/recording',
+#                 'callback':'zoeSetListening'
+#             }
+#         ]
+#     })
 
-objects['fullLightMultiplier'] = createLight({
-    'class':msc.taskMultiplier,
-    'config': {
-        'outputs': [
-            {
-                'setFunction': ambilight.setMQTT,
-                'conversion': None
-            },
-            {
-                'setFunction': bedLight.setMQTT,
-                'conversion': None
-            },
-            {
-                'setFunction': neopixel.setColorMQTT,
-                'conversion': None
-            },
-            {
-                'setFunction': underbedLight.setMQTT,
-                'conversion': None
-            },
-            {
-                'setFunction': whiteboardLight.setMQTT,
-                'conversion': None
-            },
-        ]
-    },
-    'topics': [
-        {
-            'topic':'julian/fullLight',
-            'callback':'setMQTT'
-        }
-    ]
-    })
+# createLight({
+#         'class': heaterControl,
+#         'config': {
+#             'mqttClient': client,
+#             'switchTopic': 'null',
+#             'sensorPin': 5,
+#             'metricTopic': 'julian/outside',
+#             'heaterActiveTopic': 'null'
+#         },
+#         'topics': []
+#     })
 
-
-objects['heater'] = createLight({
-        'class': heaterControl,
-        'config': {
-            'mqttClient': client,
-            'switchTopic': 'sonoff/heizung/cmnd/tasmota_switch/Power',
-            'sensorPin': 4,
-            'metricTopic': 'julian/currTemp',
-            'heaterActiveTopic': 'julian/heizungActive',
-        },
-        'topics': [
-            {
-                'topic': 'julian/heizung',
-                'callback': 'setMQTT'
-            },
-            {
-                'topic': 'julian/heizungActive',
-                'callback': 'setActive'
-            }
-        ]
-    })
-
-#objects['fullLightSunrise'] = createLight({
-        #'class':msc.sunrise,
-        #'config': {
-            #'callback': objects['fullLightMultiplier'].setMQTT,
-            #'outputColorFormat': '888',
-            #'time': 1800,
-            #'color': [255,255,255]
-        #}
-
-    #})
-
+# objects['heater'] = createLight({
+#         'class': heaterControl,
+#         'config': {
+#             'mqttClient': client,
+#             'switchTopic': 'sonoff/heizung/cmnd/tasmota_switch/Power',
+#             'sensorPin': 4,
+#             'metricTopic': 'julian/bedroom',
+#             'heaterActiveTopic': 'julian/heizungActive',
+#         },
+#         'topics': [
+#             {
+#                 'topic': 'julian/heizung',
+#                 'callback': 'setMQTT'
+#             },
+#             {
+#                 'topic': 'julian/heizungActive',
+#                 'callback': 'setActive'
+#             }
+#         ]
+#     })
 
 mainSwitchMatrix = createLight({
   'class': runtimeConfigurableMatrix,
@@ -531,13 +805,6 @@ mainSwitchMatrix = createLight({
           'method': 'setToggle'
         }
       },
-      'waterPlants': {
-        'conversion': lambda a: 1,
-        'target': {
-          'fixture': objects['waterpump'],
-          'method': 'setMQTT'
-        }
-      }
     },
     'templates': {
       'default': {
@@ -587,13 +854,13 @@ def parse(data,conn=None):
         return
     if jsonobj['type'] == 'neopixel':
         if jsonobj['action'] == 'zoeStartRainbow':
-            response = tneopixel.zoeStartRainbow()
+            response = neopixel.zoeStartRainbow()
             print('startRainbow')
         if jsonobj['action'] == 'zoeStopRainbow':
-            response = tneopixel.zoeStopRainbow()
+            response = neopixel.zoeStopRainbow()
             print('stopRainbow')
         if jsonobj['action'] == 'zoeBrightness':
-            response = tneopixel.zoeBrightness(jsonobj["value"])
+            response = neopixel.zoeBrightness(jsonobj["value"])
             print('zoeBrightness')
     if jsonobj['type'] == "schedule":
         if jsonobj['action'] == "getJobs":

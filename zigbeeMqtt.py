@@ -17,6 +17,7 @@ class zigbeeMqtt(QueueRunner, threading.Thread):
         })
     
     def set(self, key, value):
+      print("setting ZIGBEE", key, value)
       data = {}
       data[key] = value
       print(data)
@@ -25,3 +26,7 @@ class zigbeeMqtt(QueueRunner, threading.Thread):
     def setMQTT(self, value, topic):
       key = topic.split("/")[-1]
       self.queue.put({ 'f':self.set, 'a':[key, value] })
+    
+    def setObject(self, data):
+      print("setObject", data)
+      self.set(data['key'], data['value'])

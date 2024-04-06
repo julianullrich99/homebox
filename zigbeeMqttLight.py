@@ -4,12 +4,18 @@ from zigbeeMqtt import zigbeeMqtt
 class zigbeeMqttLight(zigbeeMqtt):
   def __init__(self, config=..., name=""):
     super().__init__(config, name)
+    self.name = name
+    if 'colorTempEnabled' in config:
+      self.colorTempEnabled = config['colorTempEnabled']
+    else:
+      self.colorTempEnabled = False
 
     self.state = False
     self.brightness = 254
     self.colorTemp = 290
 
   def set(self, key, value):
+    print("setting in light", key, value)
     if key == 'toggle':
       self.state = not self.state
 
@@ -37,7 +43,7 @@ class zigbeeMqttLight(zigbeeMqtt):
   def turnOn(self):
     self.state = True
     super().set('brightness', self.brightness)
-    super().set('color_temp', self.colorTemp)
+    if (self.colorTempEnabled): super().set('color_temp', self.colorTemp)
 
   def turnOff(self):
     self.state = False
@@ -61,7 +67,8 @@ class zigbeeMqttLight(zigbeeMqtt):
   def okay(self):
     self.queue.put({ 'f':self.set, 'a':['effect', 'okay'] })
   
-  def toggle(self, brightness = None, colorTemp = None, reset = False):
+  def toggle(self, brightness = None, colorTemp = None, reset = False, resetBrightnessOnToggle = False):
+    print('toggle', self.name)
     if brightness is not None:
       self.brightness = brightness
       self.state = False # treat as if its off -> switch on in any case
@@ -72,6 +79,8 @@ class zigbeeMqttLight(zigbeeMqtt):
       self.brightness = 254
       self.colorTemp = 310
       self.state = False
+    if resetBrightnessOnToggle:
+      self.brightness = 254 if self.state == False else 0
 
     self.set('toggle', '')
 

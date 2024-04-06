@@ -1,4 +1,3 @@
-
 from queue import Queue
 import RPi.GPIO as GPIO
 from pwmPCA9685 import pwm as pwm
@@ -29,6 +28,79 @@ class lightOneChannel(QueueRunner, threading.Thread, ):
 
         self.on = False
         self.rise = True
+
+        self.externalDimState = 'OFF'
+        self.externalDimUpdateTime = 0
+
+        self.morphingTime = 1000 if 'morphingTime' not in config else config['morphingTime']
+        self.morphingSteps = max(2, int(self.morphingTime/10))
+
+    def run1(self):
+        while True:
+          QueueRunner.run(self, nowait=True, loop=False)
+          # self.externalDimRunner()
+          time.sleep(0.1)
+          if (self.externalDimState != 'OFF' and  (time.time() - self.externalDimUpdateTime) > 0.1): # incase of connection loss
+              print('resetting external dim state')
+              self.externalDimState = 'OFF'
+
+    def externalDimInput(self, value):
+      # print('setting dim state '+value)
+      self.externalDimState = value
+      self.externalDimUpdateTime = time.time()
+
+    def externalDimRunner(self):
+        # print('running dim runner')
+        if(self.externalDimState == 'OFF'): return
+
+        starttime = time.time()
+        while (self.externalDimState == 'ON' or self.externalDimState == 'HOLD'):
+            time.sleep(0.02)
+            if time.time() - starttime >= 0.5:
+                break
+        endtime = time.time()
+        timediff = endtime-starttime
+        if timediff < self.startThreshold:
+            return 0
+        if timediff < self.dimThreshold:
+            if not self.on:
+                for i in range(0,101):
+                    value = (self.currVal*i/100)
+                    # print value
+                    self.out.set(value)
+                    time.sleep(0.005)
+                self.on = not self.on
+            else:
+                for i in range(0,101):
+                    value = (self.currVal*(100-i)/100)
+                    # print value
+                    self.out.set(value)
+                    time.sleep(0.005)
+                self.on = not self.on
+        else:
+            if not self.on:
+                self.currVal = 0
+        while (self.externalDimState == 'ON' or self.externalDimState == 'HOLD'):
+            if (self.externalDimState != 'OFF' and  (time.time() - self.externalDimUpdateTime) > 0.1): # incase of connection loss
+                self.externalDimState = 'OFF'
+
+            if self.rise:
+                if self.currVal < 255:
+                    self.currVal += 1
+            else:
+                if self.currVal > 0:
+                    self.currVal -= 1
+            value = (self.currVal)
+            # print value
+            self.out.set(value)
+            if self.currVal == 0:
+                self.on = False
+                self.currVal = 50
+                break
+            else:
+                self.on = True
+            time.sleep(0.015)
+        self.rise = not self.rise
 
     def dim(self,c):
         # global storeValue, strip, on, rise, channel, start, number, dimThreshold, startThreshold
@@ -80,14 +152,12 @@ class lightOneChannel(QueueRunner, threading.Thread, ):
         self.rise = not self.rise
 
     def morphto(self,value):
-        print("morphing to",value)
         if (value == 0):
             if not self.on:
                 return
             else:
-                for i in range(0,101):
-                    value = self.currVal*(100-i)/100
-                    # print value
+                for i in range(0, self.morphingSteps+1):
+                    value = self.currVal*(self.morphingSteps-i)/self.morphingSteps
                     self.out.set(value)
                     time.sleep(0.005)
                 self.on = False
@@ -96,9 +166,8 @@ class lightOneChannel(QueueRunner, threading.Thread, ):
         else:
             if not self.on:
                 self.currVal = value
-                for i in range(0,101):
-                    value = self.currVal*i/100
-                    # print value
+                for i in range(0, self.morphingSteps+1):
+                    value = self.currVal*i/self.morphingSteps
                     self.out.set(value)
                     time.sleep(0.005)
                 self.on = True

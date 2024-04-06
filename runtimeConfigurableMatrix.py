@@ -19,7 +19,6 @@ class runtimeConfigurableMatrix(QueueRunner, threading.Thread):
         return
 
       topicConfig = self.matrix[topic]
-      print(topicConfig)
 
       for entry in topicConfig:
         if re.search(topicConfig[entry]['msg'], value):

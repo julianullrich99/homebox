@@ -13,3 +13,6 @@ class externalMQTT():
         if topic == "":
             topic = self.defaultTopic
         self.client.publish(topic,data,1,False)
+        
+    def setScheduler(self, data):
+        self.send(data)
