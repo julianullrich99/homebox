@@ -7,7 +7,7 @@ class bedAutoShutoff(threading.Thread, ):
         threading.Thread.__init__(self, name=name)
 
         self.client = config['client']
-        self.triggerTime = 20
+        self.triggerTime = 600
         self.isOver30 = False
         self.timeOver30 = None
         self.timeUnder30 = None
