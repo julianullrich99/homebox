@@ -90,7 +90,8 @@ def on_message(client, userdata, msg):
         return
 
   try:
-    print(msg.topic+" "+str(msg.payload))
+    if not (msg.topic in ['bed/temp2']):
+      print(msg.topic+" "+str(msg.payload))
 
     if (msg.topic.startswith("jarvis/")):
         t, v = jarvisParser.parse(msg.payload,msg.topic)
